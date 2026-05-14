@@ -45,10 +45,12 @@ public abstract class AIChatClient {
                 .filter(temperature -> temperature >= 0 && temperature <= 2.0)
                 .ifPresent(optionsBuilder::temperature);
 
-        // 频率惩罚设置
+        // 频率惩罚设置（Gemini 不支持，已注释）
+        /*
         Optional.of(options.getFrequencyPenalty())
                 .filter(frequencyPenalty -> frequencyPenalty >= -2.0 && frequencyPenalty <= 2.0)
                 .ifPresent(optionsBuilder::frequencyPenalty);
+        */
 
         // 最大 token 设置
         Optional.ofNullable(options.getMaxTokens())

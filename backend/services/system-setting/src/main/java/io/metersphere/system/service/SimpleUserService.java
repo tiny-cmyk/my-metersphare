@@ -132,7 +132,7 @@ public class SimpleUserService {
     }
 
     private List<UserCreateInfo> saveUserAndRole(UserBatchCreateRequest userCreateDTO, String source, String operator, String requestPath) {
-        int responseCode = Objects.requireNonNull(CommonBeanFactory.getBean(UserXpackService.class)).GWHowToAddUser(userCreateDTO, source, operator);
+        int responseCode = (CommonBeanFactory.getBean(UserXpackService.class) != null ? CommonBeanFactory.getBean(UserXpackService.class).GWHowToAddUser(userCreateDTO, source, operator) : 0);
         if (responseCode == 0) {
             operationLogService.batchAdd(userLogService.getBatchAddLogs(userCreateDTO.getUserInfoList(), operator, requestPath));
         } else {
@@ -228,7 +228,7 @@ public class SimpleUserService {
             this.checkProcessUserAndThrowException(request.getSelectIds(), operatorId, operatorName, Translator.get("user.not.disable"));
         }
 
-        int responseCode = Objects.requireNonNull(CommonBeanFactory.getBean(UserXpackService.class)).GWHowToChangeUser(request.getSelectIds(), request.isEnable(), operatorName);
+        int responseCode = (CommonBeanFactory.getBean(UserXpackService.class) != null ? CommonBeanFactory.getBean(UserXpackService.class).GWHowToChangeUser(request.getSelectIds(), request.isEnable(), operatorName) : 0);
 
         if (responseCode == 0) {
             TableBatchProcessResponse response = new TableBatchProcessResponse();
@@ -323,7 +323,7 @@ public class SimpleUserService {
         TableBatchProcessResponse response = new TableBatchProcessResponse();
         response.setTotalCount(userIdList.size());
         response.setSuccessCount(
-                Objects.requireNonNull(CommonBeanFactory.getBean(UserXpackService.class)).GWHowToDeleteUser(userIdList, operatorId));
+                (CommonBeanFactory.getBean(UserXpackService.class) != null ? CommonBeanFactory.getBean(UserXpackService.class).GWHowToDeleteUser(userIdList, operatorId) : 0));
         //删除用户角色关系
         userRoleRelationService.deleteByUserIdList(userIdList);
         //批量踢出用户
@@ -532,7 +532,7 @@ public class SimpleUserService {
             this.add(userInvite.getEmail());
         }});
 
-        int responseCode = Objects.requireNonNull(CommonBeanFactory.getBean(UserXpackService.class)).GWHowToAddUser(request, userInvite);
+        int responseCode = (CommonBeanFactory.getBean(UserXpackService.class) != null ? CommonBeanFactory.getBean(UserXpackService.class).GWHowToAddUser(request, userInvite) : 0);
         if (responseCode == 0) {
             //删除本次邀请记录
             userInviteService.deleteInviteById(userInvite.getId());
