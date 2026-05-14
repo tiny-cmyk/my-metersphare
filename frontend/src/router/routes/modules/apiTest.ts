@@ -13,6 +13,7 @@ const ApiTest: AppRouteRecordRaw = {
     collapsedLocale: 'menu.apiTestShort',
     icon: 'icon-icon_api-test-filled2',
     order: 4,
+    hideInMenu: true,
     hideChildrenInMenu: true,
     roles: [
       'PROJECT_API_DEBUG:READ',

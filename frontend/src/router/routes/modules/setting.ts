@@ -81,6 +81,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.system.usergroup',
             roles: ['SYSTEM_USER_ROLE:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -91,6 +92,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.system.organizationAndProject',
             roles: ['SYSTEM_ORGANIZATION_PROJECT:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -107,6 +109,7 @@ const Setting: AppRouteRecordRaw = {
               'SYSTEM_PARAMETER_SETTING_QRCODE:READ',
             ],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -117,6 +120,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.system.resourcePool',
             roles: ['SYSTEM_TEST_RESOURCE_POOL:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -149,6 +153,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.projectManagement.taskCenter',
             roles: ['SYSTEM_CASE_TASK_CENTER:READ', 'SYSTEM_SCHEDULE_TASK_CENTER:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -159,6 +164,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.system.pluginManager',
             roles: ['SYSTEM_PLUGIN:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -169,6 +175,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'License',
             roles: ['SYSTEM_AUTH:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -179,6 +186,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.system.log',
             roles: ['SYSTEM_LOG:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
       ],
@@ -221,6 +229,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.organization.userGroup',
             roles: ['ORGANIZATION_USER_ROLE:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -241,6 +250,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.organization.serviceIntegration',
             roles: ['SYSTEM_SERVICE_INTEGRATION:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -251,6 +261,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.organization.template',
             roles: ['ORGANIZATION_TEMPLATE:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         // 模板列表-模板字段设置
@@ -412,6 +423,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.projectManagement.taskCenter',
             roles: ['ORGANIZATION_CASE_TASK_CENTER:READ', 'ORGANIZATION_SCHEDULE_TASK_CENTER:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
         {
@@ -422,6 +434,7 @@ const Setting: AppRouteRecordRaw = {
             locale: 'menu.settings.organization.log',
             roles: ['ORGANIZATION_LOG:READ'],
             isTopMenu: true,
+            hideInMenu: true,
           },
         },
       ],
