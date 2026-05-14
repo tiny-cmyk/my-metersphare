@@ -80,3 +80,6 @@ export const getChangeHistoryListUrl = '/bug/history/page';
 export const checkCasePermissionUrl = '/bug/case/check-permission';
 // 缺陷预览富文本url
 export const EditorPreviewFileUrl = '/bug/attachment/preview/md';
+
+// 提交到 Linear
+export const createLinearIssueUrl = '/bug/linear/create';

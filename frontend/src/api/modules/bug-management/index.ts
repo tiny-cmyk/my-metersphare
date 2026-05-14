@@ -256,3 +256,8 @@ export function getChangeHistoryList(data: TableQueryParams) {
 export function checkCasePermission(projectId: string, caseType: string) {
   return MSR.get({ url: `${bugURL.checkCasePermissionUrl}/${projectId}/${caseType}` });
 }
+
+// 提交到 Linear
+export function createLinearIssue(data: Record<string, any>) {
+  return MSR.post({ url: bugURL.createLinearIssueUrl, data });
+}

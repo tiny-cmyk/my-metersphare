@@ -60,6 +60,17 @@
           type="icon"
           status="secondary"
           class="mr-4 !rounded-[var(--border-radius-small)]"
+          :loading="linearLoading"
+          :disabled="loading"
+          @click="submitToLinear"
+        >
+          <MsIcon type="icon-icon_link-copy_outlined" class="mr-1 font-[16px]" />
+          提交 Linear
+        </MsButton>
+        <MsButton
+          type="icon"
+          status="secondary"
+          class="mr-4 !rounded-[var(--border-radius-small)]"
           :loading="followLoading"
           :disabled="loading"
           @click="followHandler"
@@ -200,6 +211,7 @@
   import CommentTab from './commentTab.vue';
 
   import {
+    createLinearIssue,
     createOrUpdateComment,
     deleteSingleBug,
     editorUploadFile,
@@ -503,6 +515,28 @@
       followLoading.value = false;
     }
   }
+  // 提交到 Linear
+  const linearLoading = ref<boolean>(false);
+  async function submitToLinear() {
+    linearLoading.value = true;
+    try {
+      const result = await createLinearIssue({
+        bugId: detailInfo.value.id,
+        num: detailInfo.value.num,
+        title: detailInfo.value.title,
+        description: detailInfo.value.description,
+        priority: detailInfo.value.priority,
+        link: window.location.href,
+      });
+      Message.success(`已提交到 Linear：${result.identifier} - ${result.url}`);
+    } catch (error) {
+      Message.error('提交 Linear 失败，请重试');
+      console.log(error);
+    } finally {
+      linearLoading.value = false;
+    }
+  }
+
   const deleteVisible = ref(false);
 
   // 删除用例
