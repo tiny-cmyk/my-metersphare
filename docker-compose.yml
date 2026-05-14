@@ -1,0 +1,68 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ms-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: metersphere123
+      MYSQL_DATABASE: metersphere
+    volumes:
+      - /data/ms-data/mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+  redis:
+    image: registry.cn-qingdao.aliyuncs.com/metersphere/redis:8.2.2-alpine
+    container_name: ms-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: registry.cn-qingdao.aliyuncs.com/metersphere/minio:RELEASE.2023-04-13T03-08-07Z
+    container_name: ms-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: metersphere123
+    volumes:
+      - /data/ms-data/minio:/data
+    ports:
+      - "9000:9000"
+      - "9002:9001"
+    command: server /data --console-address ":9001"
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: ms-kafka
+    restart: always
+    environment:
+      KAFKA_NODE_ID: 0
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+
+  metersphere:
+    image: my-metersphere:latest
+    container_name: ms-app
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/metersphere/conf/metersphere.properties
+    volumes:
+      - /opt/metersphere/conf:/opt/metersphere/conf
+      - /opt/metersphere/logs:/opt/metersphere/logs
+    depends_on:
+      - mysql
+      - redis
+      - minio
+      - kafka
