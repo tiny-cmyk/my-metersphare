@@ -55,7 +55,6 @@ import org.springframework.stereotype.Service;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -159,37 +158,13 @@ public class FunctionalCaseAIService {
     public String chat(AIChatRequest request, String userId) {
         AiModelSourceDTO module = aiChatBaseService.getModule(request, userId);
         aiChatBaseService.saveUserConversationContent(request.getConversationId(), request.getPrompt());
-        String prompt = String.format("""
-                作为测试用例生成助手，判断：用户是否想要生成测试用例？
-                
-                用户输入：%s
-                
-                只返回单个布尔值：
-                - 是 → true
-                - 否 → false
-                - 不要返回任何其他文字或解释
-                """, request.getPrompt());
 
+        // 直接使用测试用例生成模式，跳过意图判断（此对话框本身即为用例生成场景）
         AIChatOption aiChatOption = AIChatOption.builder()
                 .conversationId(request.getConversationId())
                 .module(module)
-                .prompt(prompt)
+                .prompt(request.getPrompt() + renderSystemPromptTpl(userId))
                 .build();
-
-        boolean isGenerateCase = Optional.ofNullable(aiChatBaseService.chat(aiChatOption).content())
-                .map(content -> StringUtils.containsIgnoreCase(content, "true"))
-                .orElse(false);
-
-        LogUtils.info("AI判断是否生成测试用例: {}", isGenerateCase);
-
-        Consumer<AIChatOption> configureTestGeneration = option -> {
-            option.setPrompt(request.getPrompt() + renderSystemPromptTpl(userId));
-        };
-
-        Consumer<AIChatOption> configureNormalAssistant = option -> option.setPrompt(request.getPrompt());
-
-        // 根据条件选择并执行相应的配置行为
-        (isGenerateCase ? configureTestGeneration : configureNormalAssistant).accept(aiChatOption);
 
         String content = TextCleaner.cleanMdTitle(aiChatBaseService.chatWithMemory(aiChatOption).content());
         aiChatBaseService.saveAssistantConversationContent(request.getConversationId(), content);
