@@ -181,3 +181,5 @@ export const GetAiConfigUrl = '/functional/case/ai/get/config';
 export const CaseAiTransformUrl = '/functional/case/ai/transform'; // AI用例结构转换
 export const CaseAiChatUrl = '/functional/case/ai/chat'; // AI用例聊天
 export const CaseAiBatchSaveUrl = '/functional/case/ai/batch/save'; // AI用例批量保存
+export const NotionPreviewUrl = '/functional/case/ai/notion/preview'; // Notion导入预览
+export const NotionSaveUrl = '/functional/case/ai/notion/save'; // Notion导入保存

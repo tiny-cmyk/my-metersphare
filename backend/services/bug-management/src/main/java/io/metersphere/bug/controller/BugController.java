@@ -35,6 +35,9 @@ import io.metersphere.validation.groups.Created;
 import io.metersphere.validation.groups.Updated;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.metersphere.bug.dto.request.LinearIssueRequest;
+import io.metersphere.bug.dto.response.LinearIssueResponse;
+import io.metersphere.bug.service.LinearService;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
@@ -56,6 +59,8 @@ public class BugController {
 
     @Resource
     private BugService bugService;
+    @Resource
+    private LinearService linearService;
     @Resource
     private BugSyncService bugSyncService;
     @Resource
@@ -240,6 +245,13 @@ public class BugController {
     @RequiresPermissions(PermissionConstants.PROJECT_BUG_READ)
     public void follow(@PathVariable String id) {
         bugService.follow(id, SessionUtils.getUserId());
+    }
+
+    @PostMapping("/linear/create")
+    @Operation(summary = "缺陷管理-提交到Linear")
+    @RequiresPermissions(PermissionConstants.PROJECT_BUG_READ)
+    public LinearIssueResponse createLinearIssue(@Validated @RequestBody LinearIssueRequest request) {
+        return linearService.createIssue(request);
     }
 
     @GetMapping("/unfollow/{id}")

@@ -20,6 +20,8 @@ import {
   CaseAiBatchSaveUrl,
   CaseAiChatUrl,
   CaseAiTransformUrl,
+  NotionPreviewUrl,
+  NotionSaveUrl,
   CheckCaseExportTaskUrl,
   checkFileIsUpdateUrl,
   CreateCaseModuleTreeUrl,
@@ -532,4 +534,14 @@ export function caseAiChat(data: AiChatPrams) {
 // AI用例批量保存
 export function caseAiBatchSave(data: CaseAiBatchSaveParams) {
   return MSR.post({ url: CaseAiBatchSaveUrl, data });
+}
+
+// Notion导入-预览AI生成的测试用例
+export function notionPreview(data: { notionUrl: string; projectId: string; moduleId?: string; templateId?: string }) {
+  return MSR.post<string>({ url: NotionPreviewUrl, data });
+}
+
+// Notion导入-确认保存AI生成的测试用例
+export function notionSave(data: CaseAiBatchSaveParams) {
+  return MSR.post({ url: NotionSaveUrl, data });
 }

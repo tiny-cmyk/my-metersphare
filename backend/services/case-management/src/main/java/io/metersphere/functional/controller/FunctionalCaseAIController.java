@@ -3,7 +3,9 @@ package io.metersphere.functional.controller;
 import io.metersphere.functional.dto.FunctionalCaseAIConfigDTO;
 import io.metersphere.functional.dto.FunctionalCaseAiDTO;
 import io.metersphere.functional.request.FunctionalCaseAIChatRequest;
+import io.metersphere.functional.request.NotionImportRequest;
 import io.metersphere.functional.service.FunctionalCaseAIService;
+import io.metersphere.functional.service.NotionService;
 import io.metersphere.sdk.constants.PermissionConstants;
 import io.metersphere.system.dto.request.ai.AIChatRequest;
 import io.metersphere.system.security.CheckOwner;
@@ -25,6 +27,9 @@ public class FunctionalCaseAIController {
 
     @Resource
     private FunctionalCaseAIService functionalCaseAIService;
+
+    @Resource
+    private NotionService notionService;
 
     @GetMapping("/get/config")
     @Operation(summary = "用例管理-功能用例-获取用户AI提示词")
@@ -60,6 +65,22 @@ public class FunctionalCaseAIController {
     @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
     public void transformToDTO(@Validated @RequestBody FunctionalCaseAIChatRequest request) {
          functionalCaseAIService.batchSave(request, SessionUtils.getUserId());
+    }
+
+    @PostMapping("/notion/preview")
+    @Operation(summary = "用例管理-功能用例-从Notion导入需求并AI生成测试用例(预览)")
+    @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ)
+    @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
+    public String notionPreview(@Validated @RequestBody NotionImportRequest request) {
+        return notionService.generateCasesFromNotionUrl(request.getNotionUrl(), SessionUtils.getUserId());
+    }
+
+    @PostMapping("/notion/save")
+    @Operation(summary = "用例管理-功能用例-从Notion导入需求并AI生成测试用例(确认保存)")
+    @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ_ADD)
+    @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
+    public void notionSave(@Validated @RequestBody FunctionalCaseAIChatRequest request) {
+        functionalCaseAIService.batchSave(request, SessionUtils.getUserId());
     }
 
 }
