@@ -92,17 +92,33 @@ public class LocalRealm extends AuthorizingRealm {
     }
 
     private AuthenticationInfo loginLocalMode(String userId, String password) {
-        UserDTO user = userLoginService.getUserDTO(userId);
-        String msg;
-        if (user == null) {
-            user = userLoginService.getUserDTOByEmail(userId);
-            if (user == null) {
-                msg = "The user does not exist: " + userId;
-                logger.warn(msg);
-                throw new UnknownAccountException(Translator.get("password_is_incorrect"));
-            }
-            userId = user.getId();
+        UserDTO user = null;
+        // 先走正常路径（可能被 Xpack AOP 拦截）
+        try {
+            user = userLoginService.getUserDTO(userId);
+        } catch (DisabledAccountException e) {
+            throw e;
+        } catch (Exception ignored) {
+            logger.info("getUserDTO was blocked (possibly by Xpack), falling back to direct lookup for: " + userId);
         }
+        if (user == null) {
+            try {
+                user = userLoginService.getUserDTOByEmail(userId);
+            } catch (DisabledAccountException e) {
+                throw e;
+            } catch (Exception ignored) {
+                // also blocked
+            }
+        }
+        // 备用路径：直接查库，绕过任何 AOP 拦截
+        if (user == null) {
+            user = userLoginService.getUserDTONoXpack(userId);
+        }
+        if (user == null) {
+            logger.warn("The user does not exist: " + userId);
+            throw new UnknownAccountException(Translator.get("password_is_incorrect"));
+        }
+        userId = user.getId();
         // 密码验证
         if (!userLoginService.checkUserPassword(userId, password)) {
             throw new IncorrectCredentialsException(Translator.get("password_is_incorrect"));

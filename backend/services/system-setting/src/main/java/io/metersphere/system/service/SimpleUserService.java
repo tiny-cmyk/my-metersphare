@@ -60,6 +60,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @Transactional(rollbackFor = Exception.class)
@@ -88,6 +89,8 @@ public class SimpleUserService {
     private UserLogService userLogService;
     @Resource
     private UserToolService userToolService;
+    @Resource
+    private io.metersphere.system.mapper.UserRoleRelationMapper userRoleRelationMapper;
 
     @Value("50MB")
     private DataSize maxImportFileSize;
@@ -134,6 +137,17 @@ public class SimpleUserService {
     private List<UserCreateInfo> saveUserAndRole(UserBatchCreateRequest userCreateDTO, String source, String operator, String requestPath) {
         int responseCode = (CommonBeanFactory.getBean(UserXpackService.class) != null ? CommonBeanFactory.getBean(UserXpackService.class).GWHowToAddUser(userCreateDTO, source, operator) : 0);
         if (responseCode == 0) {
+            // 检查 Xpack 是否实际写入了用户，若没有则直接写库
+            List<String> emails = userCreateDTO.getUserInfoList().stream()
+                    .map(UserCreateInfo::getEmail).collect(Collectors.toList());
+            Set<String> existingEmails = baseUserMapper.selectUserIdByEmailList(emails)
+                    .stream().map(User::getEmail).collect(Collectors.toSet());
+            List<UserCreateInfo> missing = userCreateDTO.getUserInfoList().stream()
+                    .filter(u -> !existingEmails.contains(u.getEmail()))
+                    .collect(Collectors.toList());
+            if (!missing.isEmpty()) {
+                this.directInsertUsers(missing, source, operator, userCreateDTO.getUserRoleIdList());
+            }
             operationLogService.batchAdd(userLogService.getBatchAddLogs(userCreateDTO.getUserInfoList(), operator, requestPath));
         } else {
             if (responseCode == -1) {
@@ -143,6 +157,51 @@ public class SimpleUserService {
             }
         }
         return userCreateDTO.getUserInfoList();
+    }
+
+    /**
+     * 当 Xpack 未实际写入用户时，直接通过 Mapper 插入用户数据
+     */
+    private void directInsertUsers(List<UserCreateInfo> users, String source, String operator, List<String> roleIds) {
+        long now = System.currentTimeMillis();
+        for (UserCreateInfo info : users) {
+            String userId = UUID.randomUUID().toString().replace("-", "");
+
+            User user = new User();
+            user.setId(userId);
+            user.setName(info.getName());
+            user.setEmail(info.getEmail());
+            user.setPassword(CodingUtils.md5("metersphere"));
+            user.setEnable(true);
+            user.setCreateTime(now);
+            user.setUpdateTime(now);
+            user.setLanguage("zh-CN");
+            user.setSource(source);
+            user.setCreateUser(operator);
+            user.setUpdateUser(operator);
+            user.setDeleted(false);
+            userMapper.insert(user);
+
+            // 插入 user_extend
+            UserExtend extend = new UserExtend();
+            extend.setId(userId);
+            userExtendMapper.insert(extend);
+
+            // 插入角色关联
+            if (CollectionUtils.isNotEmpty(roleIds)) {
+                for (String roleId : roleIds) {
+                    UserRoleRelation relation = new UserRoleRelation();
+                    relation.setId(io.metersphere.system.uid.IDGenerator.nextStr());
+                    relation.setUserId(userId);
+                    relation.setRoleId(roleId);
+                    relation.setSourceId("global");
+                    relation.setOrganizationId("global");
+                    relation.setCreateTime(now);
+                    relation.setCreateUser(operator);
+                    userRoleRelationMapper.insert(relation);
+                }
+            }
+        }
     }
 
     public UserDTO getUserDTOByKeyword(String email) {

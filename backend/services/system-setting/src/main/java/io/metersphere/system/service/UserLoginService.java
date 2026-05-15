@@ -75,6 +75,33 @@ public class UserLoginService {
         return userDTO;
     }
 
+    /**
+     * 直接查库获取用户，绕过可能存在的第三方 AOP 拦截（如 Xpack cft_token 校验）
+     */
+    public UserDTO getUserDTONoXpack(String userIdOrEmail) {
+        UserDTO userDTO = baseUserMapper.selectById(userIdOrEmail);
+        if (userDTO == null) {
+            UserExample example = new UserExample();
+            example.createCriteria().andEmailEqualTo(userIdOrEmail);
+            List<User> users = userMapper.selectByExample(example);
+            if (users == null || users.isEmpty()) {
+                return null;
+            }
+            userDTO = baseUserMapper.selectById(users.get(0).getId());
+        }
+        if (userDTO == null) {
+            return null;
+        }
+        if (BooleanUtils.isFalse(userDTO.getEnable())) {
+            throw new DisabledAccountException();
+        }
+        UserRolePermissionDTO dto = getUserRolePermission(userDTO.getId());
+        userDTO.setUserRoleRelations(dto.getUserRoleRelations());
+        userDTO.setUserRoles(dto.getUserRoles());
+        userDTO.setUserRolePermissions(dto.getList());
+        return userDTO;
+    }
+
     public ResultHolder login(LoginRequest request) {
         String login = (String) SecurityUtils.getSubject().getSession().getAttribute("authenticate");
         String username = StringUtils.trim(request.getUsername());
