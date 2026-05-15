@@ -180,6 +180,8 @@ public class SimpleUserService {
             user.setCreateUser(operator);
             user.setUpdateUser(operator);
             user.setDeleted(false);
+            // cft_token 必须非 null，登录时走 getUserDTONoXpack 绕过校验
+            user.setCftToken("LOCAL");
             userMapper.insert(user);
 
             // 插入 user_extend
