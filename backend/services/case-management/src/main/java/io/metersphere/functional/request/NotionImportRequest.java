@@ -20,4 +20,10 @@ public class NotionImportRequest {
 
     @Schema(description = "模板ID")
     private String templateId;
+
+    @Schema(description = "AI模型ID")
+    private String chatModelId;
+
+    @Schema(description = "组织ID")
+    private String organizationId;
 }

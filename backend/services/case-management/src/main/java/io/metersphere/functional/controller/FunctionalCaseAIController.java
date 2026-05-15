@@ -72,7 +72,7 @@ public class FunctionalCaseAIController {
     @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ)
     @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
     public String notionPreview(@Validated @RequestBody NotionImportRequest request) {
-        return notionService.generateCasesFromNotionUrl(request.getNotionUrl(), SessionUtils.getUserId());
+        return notionService.generateCasesFromNotionUrl(request, SessionUtils.getUserId());
     }
 
     @PostMapping("/notion/save")

@@ -2,17 +2,22 @@ package io.metersphere.functional.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.metersphere.functional.request.NotionImportRequest;
 import io.metersphere.sdk.exception.MSException;
+import io.metersphere.system.domain.AiModelSource;
+import io.metersphere.system.dto.OptionDTO;
 import io.metersphere.system.dto.request.ai.AIChatOption;
 import io.metersphere.system.dto.request.ai.AIChatRequest;
 import io.metersphere.system.dto.request.ai.AiModelSourceDTO;
 import io.metersphere.system.service.AiChatBaseService;
+import io.metersphere.system.service.SystemAIConfigService;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.List;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -41,6 +46,9 @@ public class NotionService {
     private AiChatBaseService aiChatBaseService;
 
     @Resource
+    private SystemAIConfigService systemAIConfigService;
+
+    @Resource
     private FunctionalCaseAIService functionalCaseAIService;
 
     /**
@@ -50,7 +58,8 @@ public class NotionService {
      * @param userId    操作用户 ID
      * @return AI 生成的测试用例 Markdown 文本
      */
-    public String generateCasesFromNotionUrl(String notionUrl, String userId) {
+    public String generateCasesFromNotionUrl(NotionImportRequest request, String userId) {
+        String notionUrl = request.getNotionUrl();
         String pageId = extractPageId(notionUrl);
         if (StringUtils.isBlank(pageId)) {
             throw new MSException("无法从 URL 中解析 Notion 页面 ID，请检查链接格式");
@@ -63,7 +72,8 @@ public class NotionService {
             throw new MSException("Notion 页面内容为空，无法生成测试用例");
         }
 
-        return callAiToGenerateCases(pageTitle, pageContent, userId);
+        return callAiToGenerateCases(pageTitle, pageContent, userId,
+                request.getChatModelId(), request.getOrganizationId());
     }
 
     /**
@@ -244,10 +254,23 @@ public class NotionService {
     /**
      * 调用 AI 根据 Notion 页面内容生成测试用例
      */
-    private String callAiToGenerateCases(String pageTitle, String pageContent, String userId) {
+    private String callAiToGenerateCases(String pageTitle, String pageContent, String userId,
+                                          String chatModelId, String organizationId) {
+        // 如果前端未传 chatModelId，自动取用户可用的第一个模型
+        String resolvedModelId = chatModelId;
+        if (StringUtils.isBlank(resolvedModelId)) {
+            List<OptionDTO> modelList = systemAIConfigService.getModelSourceNameList(userId);
+            if (modelList == null || modelList.isEmpty()) {
+                throw new MSException("未找到可用的 AI 模型，请在系统设置中配置 AI 模型");
+            }
+            resolvedModelId = modelList.get(0).getId();
+        }
+
         AIChatRequest aiChatRequest = new AIChatRequest();
         aiChatRequest.setConversationId(UUID.randomUUID().toString());
         aiChatRequest.setPrompt(pageContent);
+        aiChatRequest.setChatModelId(resolvedModelId);
+        aiChatRequest.setOrganizationId(StringUtils.defaultIfBlank(organizationId, ""));
 
         AiModelSourceDTO module = aiChatBaseService.getModule(aiChatRequest, userId);
 
