@@ -79,7 +79,7 @@ public class FunctionalCaseAIController {
     @Operation(summary = "用例管理-功能用例-从Notion导入需求并AI生成测试用例(确认保存)")
     @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ_ADD)
     @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
-    public void notionSave(@RequestBody FunctionalCaseAIChatRequest request) {
+    public void notionSave(@Validated @RequestBody FunctionalCaseAIChatRequest request) {
         functionalCaseAIService.batchSave(request, SessionUtils.getUserId());
     }
 
