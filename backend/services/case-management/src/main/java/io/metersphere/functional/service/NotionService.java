@@ -274,25 +274,30 @@ public class NotionService {
         AiModelSourceDTO module = aiChatBaseService.getModule(aiChatRequest, userId);
 
         String prompt = String.format("""
-                你是一名专业的软件测试工程师。请根据以下需求文档内容，生成详细的功能测试用例。
+                你是一名专业的软件测试工程师。请根据以下需求文档内容，生成详细的功能测试用例，充分覆盖正常流程、边界条件和异常情况。
 
                 需求文档标题：%s
 
                 需求文档内容：
                 %s
 
-                请按照以下格式生成测试用例（每个用例包含：用例名称、前置条件、测试步骤、预期结果）：
+                **输出格式要求（严格遵守，不得有任何额外文字）：**
+                - 每条用例以独立行 `featureCaseStart` 开头，以独立行 `featureCaseEnd` 结尾
+                - 用例标题格式：`## 中文标题`（字符数不超过255）
+                - 标题下一行输出 `caseExpand`
+                - 禁止在用例容器外输出任何内容
 
-                # 用例名称
-                **前置条件：** xxx
-                **测试步骤：**
-                1. xxx
-                2. xxx
-                **预期结果：** xxx
-
-                ---
-
-                请生成尽可能完整的测试用例，覆盖正常流程、边界条件和异常情况。
+                **输出示例（严格按此结构）：**
+                featureCaseStart
+                ## 用例标题
+                caseExpand
+                ### 前置条件
+                前置条件内容
+                ### 步骤描述
+                | 用例步骤 | 预期结果 |
+                | -------- | -------- |
+                | 步骤1 | 预期结果1 |
+                featureCaseEnd
                 """, pageTitle, pageContent);
 
         AIChatOption option = AIChatOption.builder()
