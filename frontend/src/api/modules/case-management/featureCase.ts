@@ -537,7 +537,7 @@ export function caseAiBatchSave(data: CaseAiBatchSaveParams) {
 }
 
 // Notion导入-预览AI生成的测试用例
-export function notionPreview(data: { notionUrl: string; projectId: string; moduleId?: string; templateId?: string }) {
+export function notionPreview(data: { notionUrl: string; chatModelId?: string; organizationId?: string; projectId: string; moduleId?: string; templateId?: string }) {
   return MSR.post<string>({ url: NotionPreviewUrl, data });
 }
 
