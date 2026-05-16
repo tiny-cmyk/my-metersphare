@@ -180,8 +180,12 @@ public class SimpleUserService {
             user.setCreateUser(operator);
             user.setUpdateUser(operator);
             user.setDeleted(false);
-            // cft_token 必须非 null，登录时走 getUserDTONoXpack 绕过校验
-            user.setCftToken("LOCAL");
+            // cft_token = AES_encrypt(userId)，与 Xpack CFTEncryptUtils 保持一致
+            try {
+                user.setCftToken(io.metersphere.engine.util.CFTEncryptUtils.aesEncrypt(userId));
+            } catch (Exception e) {
+                user.setCftToken(userId);
+            }
             userMapper.insert(user);
 
             // 插入 user_extend
