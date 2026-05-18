@@ -200,8 +200,10 @@ public class SimpleUserService {
                     relation.setId(io.metersphere.system.uid.IDGenerator.nextStr());
                     relation.setUserId(userId);
                     relation.setRoleId(roleId);
-                    relation.setSourceId("global");
-                    relation.setOrganizationId("global");
+                    // 系统级角色(member/admin)需要 source_id='system'，组织/项目级角色用对应 ID
+                    String scopeId = (roleId.equals("member") || roleId.equals("admin")) ? "system" : "global";
+                    relation.setSourceId(scopeId);
+                    relation.setOrganizationId(scopeId);
                     relation.setCreateTime(now);
                     relation.setCreateUser(operator);
                     userRoleRelationMapper.insert(relation);
