@@ -87,6 +87,7 @@
   import { useI18n } from '@/hooks/useI18n';
   import useLocale from '@/locale/useLocale';
   import useAppStore from '@/store/modules/app';
+  import { siteBaseHref } from '@/utils/env';
 
   import { BaseAssociateCaseRequest } from '@/models/caseManagement/caseReview';
   import { ViewTypeEnum } from '@/enums/advancedFilterEnum';
@@ -122,7 +123,7 @@
 
   function goProjectManagement() {
     window.open(
-      `${window.location.origin}#${
+      `${siteBaseHref()}#${
         router.resolve({ name: ProjectManagementRouteEnum.PROJECT_MANAGEMENT_PERMISSION_USER_GROUP }).fullPath
       }`
     );

@@ -66,7 +66,8 @@
       // 项目初始化时需要获取基础设置信息，看当前站点 url是否为系统内置默认地址，如果是需要替换为当前项目部署的 url 地址
       const isInitUrl = getLocalStorage('isInitUrl'); // 是否已经初始化过 url
       if (isInitUrl === 'true') return;
-      await saveBaseUrl(window.location.origin);
+      // 子应用部署：保存 origin + base 前缀（去除尾部 /），保证后端生成的回链能落到本应用
+      await saveBaseUrl(`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}`);
       setLocalStorage('isInitUrl', 'true'); // 设置已经初始化过 url，避免重复初始化
     } catch (error) {
       // eslint-disable-next-line no-console

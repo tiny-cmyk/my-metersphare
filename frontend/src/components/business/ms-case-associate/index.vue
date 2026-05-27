@@ -206,6 +206,7 @@
   import { useI18n } from '@/hooks/useI18n';
   import useAppStore from '@/store/modules/app';
   import { mapTree } from '@/utils';
+  import { siteBaseHref } from '@/utils/env';
 
   import type { CaseManagementTable } from '@/models/caseManagement/featureCase';
   import type { CommonList, ModuleTreeNode, TableQueryParams } from '@/models/common';
@@ -765,7 +766,7 @@
 
   function openDetail(id: string) {
     window.open(
-      `${window.location.origin}#${
+      `${siteBaseHref()}#${
         router.resolve({ name: CaseManagementRouteEnum.CASE_MANAGEMENT_CASE }).fullPath
       }?id=${id}`
     );

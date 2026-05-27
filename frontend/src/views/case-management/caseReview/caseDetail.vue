@@ -292,6 +292,8 @@
   import { useRoute, useRouter } from 'vue-router';
   import dayjs from 'dayjs';
 
+  import { siteBaseHref } from '@/utils/env';
+
   import MSAvatar from '@/components/pure/ms-avatar/index.vue';
   import MsCard from '@/components/pure/ms-card/index.vue';
   import MsCheckboxDropdown from '@/components/pure/ms-checkbox-dropdown/index.vue';
@@ -552,7 +554,7 @@
 
   function goCaseDetail() {
     window.open(
-      `${window.location.origin}#${
+      `${siteBaseHref()}#${
         router.resolve({ name: CaseManagementRouteEnum.CASE_MANAGEMENT_CASE }).fullPath
       }?id=${activeCaseId.value}&orgId=${appStore.currentOrgId}&pId=${appStore.currentProjectId}`
     );

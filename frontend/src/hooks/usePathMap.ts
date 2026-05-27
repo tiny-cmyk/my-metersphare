@@ -1,6 +1,7 @@
 import { MENU_LEVEL, pathMap, PathMapItem, PathMapRoute } from '@/config/pathMap';
 import router from '@/router';
 import { findNodeByKey, mapTree, TreeNode } from '@/utils';
+import { siteBaseHref } from '@/utils/env';
 
 export default function usePathMap() {
   /**
@@ -41,7 +42,7 @@ export default function usePathMap() {
     if (pathNode && (pathNode.route || key.includes('PROJECT_MANAGEMENT_TASK_CENTER'))) {
       if (openNewPage) {
         window.open(
-          `${window.location.origin}#${router.resolve({ name: pathNode.route }).fullPath}?${new URLSearchParams({
+          `${siteBaseHref()}#${router.resolve({ name: pathNode.route }).fullPath}?${new URLSearchParams({
             ...routeQuery,
             ...pathNode.routeQuery,
           }).toString()}`

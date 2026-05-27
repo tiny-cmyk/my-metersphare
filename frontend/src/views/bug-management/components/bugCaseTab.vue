@@ -108,6 +108,7 @@
   import { NO_RESOURCE_ROUTE_NAME } from '@/router/constants';
   import { useAppStore } from '@/store';
   import useFeatureCaseStore from '@/store/modules/case/featureCase';
+  import { siteBaseHref } from '@/utils/env';
   import { hasAnyPermission } from '@/utils/permission';
 
   import type { TableQueryParams } from '@/models/common';
@@ -273,7 +274,7 @@
           id,
         });
       } else {
-        window.open(`${window.location.origin}#${router.resolve({ name: NO_RESOURCE_ROUTE_NAME }).fullPath}`);
+        window.open(`${siteBaseHref()}#${router.resolve({ name: NO_RESOURCE_ROUTE_NAME }).fullPath}`);
       }
     } catch (error) {
       console.log(error);

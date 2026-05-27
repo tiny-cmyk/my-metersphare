@@ -10,11 +10,27 @@ export default mergeConfig(
   {
     mode: 'development',
     server: {
-      open: true,
+      // 远程 systemd 部署没有 xdg-open，强制关闭浏览器自动打开（否则 vite 会持续崩溃重启）
+      open: false,
+      // 允许被 Echo / Traefik 通过任意 Host 反代访问
+      allowedHosts: true,
       fs: {
         strict: true,
       },
       proxy: {
+        // 接入 Echo 子应用前缀：浏览器请求 /my-metersphare/front/... → 后端 /...
+        '/my-metersphare/ws': {
+          target: process.env.VITE_DEV_DOMAIN,
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/my-metersphare\/front\/ws/, ''),
+          ws: true,
+        },
+        '/my-metersphare/front': {
+          target: process.env.VITE_DEV_DOMAIN,
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/my-metersphare\/front/, ''),
+        },
+        // 旧的无前缀代理（保留兼容旧的开发调用路径）
         '/ws': {
           target: process.env.VITE_DEV_DOMAIN,
           changeOrigin: true,

@@ -2,6 +2,7 @@ import { RouteRecordName, useRouter } from 'vue-router';
 
 import { useAppStore } from '@/store';
 import { getGenerateId } from '@/utils';
+import { siteBaseHref } from '@/utils/env';
 
 /**
  * 打开新页面
@@ -25,7 +26,7 @@ export default function useOpenNewPage() {
     }
     const queryParams = new URLSearchParams(query).toString();
     window.open(
-      `${window.location.origin}#${router.resolve({ name }).fullPath}?orgId=${orgId}&pId=${pId}&${queryParams}`,
+      `${siteBaseHref()}#${router.resolve({ name }).fullPath}?orgId=${orgId}&pId=${pId}&${queryParams}`,
       '_blank'
     );
   }
@@ -42,7 +43,7 @@ export default function useOpenNewPage() {
     }
     const queryParams = new URLSearchParams(query).toString();
     window.open(
-      `${window.location.origin}#${router.resolve({ name }).fullPath}/${param}?orgId=${
+      `${siteBaseHref()}#${router.resolve({ name }).fullPath}/${param}?orgId=${
         appStore.currentOrgId
       }&pId=${pId}&${queryParams}`,
       '_blank'
@@ -66,7 +67,7 @@ export default function useOpenNewPage() {
     }
     const queryParams = new URLSearchParams(query).toString();
     const newTab = window.open(
-      `${window.location.origin}#${router.resolve({ name }).fullPath}?orgId=${orgId}&pId=${pId}&${queryParams}`,
+      `${siteBaseHref()}#${router.resolve({ name }).fullPath}?orgId=${orgId}&pId=${pId}&${queryParams}`,
       '_blank'
     );
 

@@ -245,7 +245,7 @@
 
   import type { FormItemModel, FormMode } from './types';
   import type { FormInstance, ValidatedError } from '@arco-design/web-vue';
-  import { FieldData } from '@arco-design/web-vue/es/form/interface';
+  import type { FieldData } from '@arco-design/web-vue/es/form/interface';
 
   export interface BatchFormProps {
     models: FormItemModel[];

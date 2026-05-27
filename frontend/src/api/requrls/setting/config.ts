@@ -39,14 +39,16 @@ export const GetCleanConfigUrl = '/system/parameter/get/clean-config';
 // 设置上传配置
 export const EditUploadConfigUrl = '/system/parameter/edit/upload-config';
 
+// 子应用前缀 + API 基础路径（例如 '/my-metersphare/front' 或 '/'）
+const ASSET_BASE = `${import.meta.env.BASE_URL}${import.meta.env.VITE_API_BASE_URL}`;
 // 获取系统主页左上角图片
-export const GetTitleImgUrl = `${import.meta.env.VITE_API_BASE_URL}/base-display/get/logo-platform`;
+export const GetTitleImgUrl = `${ASSET_BASE}/base-display/get/logo-platform`;
 // 获取登录 logo
-export const GetLoginLogoUrl = `${import.meta.env.VITE_API_BASE_URL}/base-display/get/login-logo`;
+export const GetLoginLogoUrl = `${ASSET_BASE}/base-display/get/login-logo`;
 // 获取登录大图
-export const GetLoginImageUrl = `${import.meta.env.VITE_API_BASE_URL}/base-display/get/login-image`;
+export const GetLoginImageUrl = `${ASSET_BASE}/base-display/get/login-image`;
 // 获取平台标签图标
-export const GetPlatformIconUrl = `${import.meta.env.VITE_API_BASE_URL}/base-display/get/icon`;
+export const GetPlatformIconUrl = `${ASSET_BASE}/base-display/get/icon`;
 // 模型配置
 // 系统设置-查看模型集合
 export const ModelConfigListUrl = '/ai/config/source/list';

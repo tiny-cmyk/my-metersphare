@@ -113,7 +113,7 @@
   import { findNodeByKey, mapTree } from '@/utils';
 
   import type { TreeFieldNames, TreeNodeData } from '@arco-design/web-vue';
-  import { LabelValue } from '@arco-design/web-vue/es/tree-select/interface';
+  import type { LabelValue } from '@arco-design/web-vue/es/tree-select/interface';
 
   const props = withDefaults(
     defineProps<{

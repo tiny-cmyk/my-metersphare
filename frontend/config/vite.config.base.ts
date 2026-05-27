@@ -10,6 +10,9 @@ import vueSetupExtend from 'vite-plugin-vue-setup-extend';
 import svgLoader from 'vite-svg-loader';
 
 export default defineConfig({
+  // 接入 Echo 门户：所有静态资源走 /my-metersphare/ 前缀
+  // 退化为根部署只需把这里改回 '/'
+  base: '/my-metersphare/',
   plugins: [
     vue(),
     vueJsx(),

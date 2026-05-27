@@ -145,7 +145,7 @@
   import type { LoginData } from '@/models/user';
   import { SettingRouteEnum } from '@/enums/routeEnum';
 
-  import { ValidatedError } from '@arco-design/web-vue/es/form/interface';
+  import type { ValidatedError } from '@arco-design/web-vue/es/form/interface';
 
   const router = useRouter();
   const { t } = useI18n();

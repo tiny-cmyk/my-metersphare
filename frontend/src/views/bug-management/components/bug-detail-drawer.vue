@@ -224,6 +224,7 @@
   import useModal from '@/hooks/useModal';
   import { useAppStore } from '@/store';
   import useUserStore from '@/store/modules/user';
+  import { siteBaseHref } from '@/utils/env';
   import { hasAnyPermission } from '@/utils/permission';
 
   import type { CustomFieldItem } from '@/models/bug-management';
@@ -483,7 +484,7 @@
   const shareLoading = ref<boolean>(false);
 
   function shareHandler() {
-    const url = `${window.location.origin}#${
+    const url = `${siteBaseHref()}#${
       router.resolve({ name: BugManagementRouteEnum.BUG_MANAGEMENT_INDEX }).fullPath
     }?
       id=${detailInfo.value.id}&orgId=${appStore.currentOrgId}&pId=${appStore.currentProjectId}`;

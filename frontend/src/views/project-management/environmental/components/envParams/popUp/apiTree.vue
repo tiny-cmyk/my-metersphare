@@ -73,7 +73,7 @@
   import useContainerShadow from '@/hooks/useContainerShadow';
   import { mapTree } from '@/utils/index';
 
-  import { VirtualListProps } from '@arco-design/web-vue/es/_components/virtual-list-v2/interface';
+  import type { VirtualListProps } from '@arco-design/web-vue/es/_components/virtual-list-v2/interface';
 
   const props = withDefaults(
     defineProps<{

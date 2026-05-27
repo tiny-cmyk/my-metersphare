@@ -189,7 +189,12 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
         // authentication schemes，e.g: Bearer
         // authenticationScheme: 'Bearer',
         authenticationScheme: '',
-        baseURL: `${window.location.origin}/${import.meta.env.VITE_API_BASE_URL as string}`,
+        // 子应用部署：以 vite base（import.meta.env.BASE_URL）派生 API 根
+        // 例如 BASE_URL='/my-metersphare/' + VITE_API_BASE_URL='front' →
+        //   https://echo.nicebuild.click/my-metersphare/front
+        baseURL: `${window.location.origin}${import.meta.env.BASE_URL}${
+          import.meta.env.VITE_API_BASE_URL as string
+        }`,
         timeout: 300 * 1000,
         headers: { 'Content-Type': ContentTypeEnum.JSON },
         // 如果是form-data格式

@@ -178,6 +178,8 @@
   import { useVModel } from '@vueuse/core';
   import dayjs from 'dayjs';
 
+  import { siteBaseHref } from '@/utils/env';
+
   import MSAvatar from '@/components/pure/ms-avatar/index.vue';
   import MsButton from '@/components/pure/ms-button/index.vue';
   import MsDrawer from '@/components/pure/ms-drawer/index.vue';
@@ -324,7 +326,7 @@
 
   function openMessageManage() {
     window.open(
-      `${window.location.origin}#${
+      `${siteBaseHref()}#${
         router.resolve({ name: ProjectManagementRouteEnum.PROJECT_MANAGEMENT_MESSAGE_MANAGEMENT }).fullPath
       }?orgId=${appStore.currentOrgId}&pId=${appStore.currentProjectId}`
     );
