@@ -88,6 +88,12 @@ export const executionResultMap: Record<string, any> = {
     statusText: t('common.fail'),
     color: '',
   },
+  NT: {
+    key: 'NT',
+    icon: StatusType.NT,
+    statusText: t('common.skip'),
+    color: 'text-[rgb(var(--warning-6))]',
+  },
 };
 
 /** *

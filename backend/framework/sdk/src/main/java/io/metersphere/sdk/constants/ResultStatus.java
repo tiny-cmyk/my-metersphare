@@ -22,4 +22,8 @@ public enum ResultStatus {
      * 阻塞
      */
     BLOCKED,
+    /**
+     * 跳过（NT/Not Tested）
+     */
+    NT,
 }
