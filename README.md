@@ -314,24 +314,125 @@ mysql -u root -p metersphere < recreate_users.sql
 
 ### 前置条件
 
-- Docker & Docker Compose
-- JDK 17+
-- Node.js 18+ / pnpm
+- JDK 17+（本地编译后端时需要，或直接在服务器上编译）
+- Node.js 18+ / pnpm（本地构建前端）
+- SSH 访问服务器：`ubuntu@10.2.5.250`，密钥 `~/.ssh/id_rsa_server`
 
-### 前端开发
+---
+
+### 前端部署
+
+前端改动（`frontend/src/` 下的 `.vue` / `.ts` 文件）需重新构建后上传到容器。
 
 ```bash
 cd frontend
-pnpm install
+
+# 首次需安装依赖
+pnpm install --no-frozen-lockfile
+
+# 构建（产物在 frontend/dist/）
+npx vite build --config ./config/vite.config.prod.ts
+
+# 上传到服务器
+rsync -az --delete -e "ssh -i ~/.ssh/id_rsa_server" \
+  dist/ ubuntu@10.2.5.250:/tmp/frontend_dist/
+
+# SSH 进服务器，将静态文件复制进容器（无需重启）
+ssh -i ~/.ssh/id_rsa_server ubuntu@10.2.5.250 \
+  "docker cp /tmp/frontend_dist/. ms-app:/app/static/"
+```
+
+> 浏览器刷新时按 `Cmd+Shift+R`（Mac）强制清除缓存。
+
+---
+
+### 后端部署
+
+后端改动（`backend/` 下的 `.java` 文件）通过以下流程热更新，**无需完整 Maven 构建**：
+
+#### 第一步：在服务器上提取依赖环境（只需做一次）
+
+```bash
+ssh -i ~/.ssh/id_rsa_server ubuntu@10.2.5.250
+
+# 把应用所有依赖 jar 拷到 /tmp/app_libs
+docker cp ms-app:/app/lib/. /tmp/app_libs/
+
+# 把当前运行的 case-management jar 解包（用于把新 class 合并进去）
+mkdir -p /tmp/case_extract
+cd /tmp/case_extract
+jar xf /tmp/app_libs/metersphere-case-management-3.x.jar
+```
+
+#### 第二步：本地修改代码，上传到服务器
+
+```bash
+# 示例：上传修改过的 Java 文件
+scp -i ~/.ssh/id_rsa_server \
+  backend/services/case-management/src/main/java/io/metersphere/functional/service/NotionSyncService.java \
+  ubuntu@10.2.5.250:/tmp/
+
+# 如果同时改了 controller，也一起上传
+scp -i ~/.ssh/id_rsa_server \
+  backend/services/case-management/src/main/java/io/metersphere/functional/controller/FunctionalCaseAIController.java \
+  ubuntu@10.2.5.250:/tmp/
+```
+
+#### 第三步：在服务器上编译并打包
+
+```bash
+ssh -i ~/.ssh/id_rsa_server ubuntu@10.2.5.250
+
+# 编译（-proc:none 避免 annotation processor 警告干扰报错判断）
+CP=$(find /tmp/app_libs -name '*.jar' | tr '\n' ':')
+mkdir -p /tmp/compiled_classes
+javac -proc:none -cp "/tmp/case_extract:$CP" \
+  -d /tmp/compiled_classes \
+  /tmp/NotionSyncService.java /tmp/FunctionalCaseAIController.java
+echo "编译退出码: $?"   # 必须为 0，否则有编译错误需排查
+
+# 把新 class 合并进解包目录
+cp -r /tmp/compiled_classes/* /tmp/case_extract/
+
+# 重新打包成 jar
+cd /tmp/case_extract
+jar cf /tmp/case-mgmt-new.jar .
+```
+
+#### 第四步：备份 → 替换 → 重启
+
+```bash
+# 备份原 jar（以防万一）
+docker exec ms-app cp \
+  /app/lib/metersphere-case-management-3.x.jar \
+  /app/lib/metersphere-case-management-3.x.jar.bak
+
+# 替换
+docker cp /tmp/case-mgmt-new.jar \
+  ms-app:/app/lib/metersphere-case-management-3.x.jar
+
+# 重启容器（约 15 秒启动完成）
+docker restart ms-app
+
+# 观察启动日志确认无报错
+docker logs ms-app --tail 30 -f
+```
+
+> **回滚**：`docker exec ms-app cp /app/lib/metersphere-case-management-3.x.jar.bak /app/lib/metersphere-case-management-3.x.jar && docker restart ms-app`
+
+---
+
+### 本地前端开发（热重载）
+
+```bash
+cd frontend
+pnpm install --no-frozen-lockfile
 pnpm dev
 ```
 
-### 后端编译
+访问 `http://localhost:5173`，需在 `config/vite.config.dev.ts` 中配置后端代理地址指向 `http://10.2.5.250:8081`。
 
-```bash
-cd backend
-mvn clean package -DskipTests
-```
+---
 
 ### 脚本部署（跳板机）
 

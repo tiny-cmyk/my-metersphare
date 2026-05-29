@@ -182,6 +182,7 @@ export default {
   'common.pass': '通过',
   'common.unPass': '不通过',
   'common.block': '阻塞',
+  'common.skip': '跳过',
   'common.fakeError': '误报',
   'common.belongModule': '所属模块',
   'common.moreSetting': '更多设置',

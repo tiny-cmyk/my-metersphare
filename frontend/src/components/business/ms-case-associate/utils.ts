@@ -54,4 +54,10 @@ export const lastExecuteResultMap: Record<string, any> = {
     label: 'FAKE_ERROR',
     color: '',
   },
+  NT: {
+    label: 'NT',
+    icon: StatusType.NT,
+    statusText: 'common.skip',
+    color: 'rgb(var(--warning-6))',
+  },
 };

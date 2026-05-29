@@ -10,6 +10,7 @@ export enum StatusType {
   ERROR = 'icon-icon_close_colorful', // 失败
   BLOCKED = 'icon-icon_block_filled', // 阻塞
   PENDING = 'icon-icon_block_filled', // 未执行
+  NT = 'icon-icon_warning_colorful', // 跳过
 }
 
 // 评审，UNDER_REVIEWED：建议，PASS：通过，UN_PASS：未通过
@@ -24,6 +25,7 @@ export enum LastExecuteResults {
   SUCCESS = 'SUCCESS',
   BLOCKED = 'BLOCKED',
   ERROR = 'ERROR',
+  NT = 'NT',
 }
 
 export enum CaseLinkEnum {
