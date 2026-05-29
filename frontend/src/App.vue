@@ -19,7 +19,13 @@
   import useAIStore from '@/store/modules/setting/ai';
   import useLicenseStore from '@/store/modules/setting/license';
   import { getQueryVariable, getUrlParameterWidthRegExp } from '@/utils';
-  import { setLoginExpires, setLongType, setToken } from '@/utils/auth';
+  import {
+    isEmbeddedInEcho,
+    redirectToScriptPlatformLogin,
+    setLoginExpires,
+    setLongType,
+    setToken,
+  } from '@/utils/auth';
   import { getLocalStorage, setLocalStorage } from '@/utils/local-storage';
   import { setFavicon, watchStyle, watchTheme } from '@/utils/theme';
 
@@ -115,6 +121,19 @@
         } catch (err) {
           // eslint-disable-next-line no-console
           console.log(err);
+        }
+      }
+      // 同源 sid 存在时优先走 SSO 引导，没有/失效则回退到原 checkIsLogin 流程
+      const hasLocalToken = !!localStorage.getItem('sessionId') && !!localStorage.getItem('csrfToken');
+      if (!hasLocalToken) {
+        const ssoOk = await userStore.ssoBootstrap();
+        if (ssoOk) {
+          setLoginExpires();
+        } else if (!isEmbeddedInEcho()) {
+          // 独立打开 metersphare 且上游 sid 不存在 / 失效 → 跳 ScriptPlatform 走 Google OAuth
+          appStore.setLoginLoading(false);
+          redirectToScriptPlatformLogin();
+          return;
         }
       }
       await userStore.checkIsLogin();

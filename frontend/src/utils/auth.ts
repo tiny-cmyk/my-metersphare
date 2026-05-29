@@ -43,6 +43,21 @@ const hasToken = (name: string) => {
   return !!localStorage.getItem(SESSION_ID) && !!localStorage.getItem(CSRF_TOKEN);
 };
 
+const isEmbeddedInEcho = () => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
+// 独立访问 metersphare 且没有上游 sid 时，跳到 ScriptPlatform 的 Google OAuth 入口走完登录再回来
+const redirectToScriptPlatformLogin = () => {
+  const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const target = `/scriptPlatform/auth/google/start?return_to=${encodeURIComponent(returnTo || '/')}`;
+  window.location.href = target;
+};
+
 const setLoginExpires = () => {
   localStorage.setItem('loginExpires', Date.now().toString());
 };
@@ -55,4 +70,16 @@ const isLoginExpires = () => {
   return diff > thirtyDay;
 };
 
-export { clearToken, getLongType, getToken, hasToken, isLogin, isLoginExpires, setLoginExpires, setLongType, setToken };
+export {
+  clearToken,
+  getLongType,
+  getToken,
+  hasToken,
+  isEmbeddedInEcho,
+  isLogin,
+  isLoginExpires,
+  redirectToScriptPlatformLogin,
+  setLoginExpires,
+  setLongType,
+  setToken,
+};

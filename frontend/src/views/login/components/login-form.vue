@@ -6,6 +6,19 @@
   >
     <a-spin :loading="preheat" :tip="t('login.form.loading')"> </a-spin>
   </div>
+  <div v-else-if="embeddedInEcho && !props.isPreview" class="login-form" style="height: 100vh">
+    <div class="title">
+      <div class="title-0 mt-[16px] flex justify-center">
+        <span class="title-welcome">等待 Echo 完成 Google 登录...</span>
+      </div>
+      <div class="mt-[12px] flex justify-center text-[13px] text-[var(--color-text-2)]">
+        系统已通知外层 Echo 弹出登录窗口，登录成功后会自动回到本页面。
+      </div>
+      <div class="mt-[20px] flex justify-center">
+        <a-button type="primary" @click="requestEchoLogin">重新唤起 Echo 登录</a-button>
+      </div>
+    </div>
+  </div>
   <div v-else class="login-form" :style="props.isPreview ? 'height: inherit' : 'height: 100vh'">
     <div class="title">
       <div class="flex justify-center">
@@ -139,7 +152,7 @@
   import { useAppStore, useUserStore } from '@/store';
   import useLicenseStore from '@/store/modules/setting/license';
   import { encrypted } from '@/utils';
-  import { getLongType, isLogin, setLoginExpires, setLongType } from '@/utils/auth';
+  import { getLongType, isLogin, redirectToScriptPlatformLogin, setLoginExpires, setLongType } from '@/utils/auth';
   import { getFirstRouteNameByPermission, routerNameHasPermission } from '@/utils/permission';
 
   import type { LoginData } from '@/models/user';
@@ -190,6 +203,23 @@
 
   const showQrCodeTab = ref(false);
   const activeName = ref('');
+
+  // 作为 Echo 子应用嵌入时（同源 iframe），不再展示本地登录表单，统一让 Echo 走 Google 登录弹窗
+  const embeddedInEcho = (() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+
+  function requestEchoLogin() {
+    try {
+      window.parent.postMessage({ type: 'script-platform:auth-required', source: 'my-metersphare' }, '*');
+    } catch {
+      // ignore — 父窗口不响应时用户会看到提示，可手动刷新
+    }
+  }
 
   function switchLoginType(type: string) {
     userInfo.value.authenticate = type;
@@ -360,15 +390,15 @@
 
   onMounted(() => {
     if (!props.isPreview) {
-      userStore.getAuthentication();
-      initPlatformInfo();
-      try {
-        isLogin().then((res) => {
-          preheat.value = res;
-        });
-      } catch (e) {
+      // 嵌入态下立即通知 Echo 触发 Google 登录弹窗，无需再调本地登录方式接口
+      if (embeddedInEcho) {
         preheat.value = false;
+        requestEchoLogin();
+        return;
       }
+      // 独立访问 /login 时直接走 ScriptPlatform Google OAuth，不再展示本地账号密码表单
+      preheat.value = false;
+      redirectToScriptPlatformLogin();
     }
   });
 </script>

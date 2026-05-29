@@ -20,6 +20,9 @@ public class FilterChainUtils {
         filterChainDefinitionMap.put("/sso/callback/ding_talk", "anon");
         filterChainDefinitionMap.put("/sso/callback/lark", "anon");
         filterChainDefinitionMap.put("/sso/callback/lark_suite", "anon");
+        // Google SSO 引导：bootstrap 必须匿名，调用后会建立 Shiro 会话
+        filterChainDefinitionMap.put("/sso/google/bootstrap", "anon");
+        filterChainDefinitionMap.put("/sso/google/logout", "anon");
         filterChainDefinitionMap.put("/setting/get/platform/param", "anon");
         filterChainDefinitionMap.put("/signout", "anon");
         filterChainDefinitionMap.put("/is-login", "anon");

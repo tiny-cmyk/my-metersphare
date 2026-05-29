@@ -8,6 +8,7 @@ import {
   isLogin as userIsLogin,
   login as userLogin,
   logout as userLogout,
+  ssoBootstrap as userSsoBootstrap,
 } from '@/api/modules/user';
 import { useI18n } from '@/hooks/useI18n';
 import useUser from '@/hooks/useUser';
@@ -177,7 +178,37 @@ const useUserStore = defineStore('user', {
         }
         await userLogout();
       } finally {
+        // 同时清掉同源 ScriptPlatform 的 sid，避免下次刷新被自动重新引导回来
+        try {
+          await fetch('/scriptPlatform/api/v1/auth/logout', {
+            method: 'POST',
+            credentials: 'include',
+          });
+        } catch {
+          // 网络异常忽略，本地状态仍要清理
+        }
         this.logoutCallBack();
+      }
+    },
+
+    // 用同源 sid cookie 走 SSO 引导拉起本地会话，无 cookie/失效时静默返回 false
+    async ssoBootstrap(): Promise<boolean> {
+      try {
+        const res = await userSsoBootstrap();
+        if (!res) {
+          return false;
+        }
+        const appStore = useAppStore();
+        const aiStore = useAIStore();
+        setToken(res.sessionId, res.csrfToken);
+        appStore.setCurrentOrgId(res.lastOrganizationId || '');
+        appStore.setCurrentProjectId(res.lastProjectId || '');
+        this.setInfo(res);
+        this.initLocalConfig();
+        aiStore.getAISourceNameList();
+        return true;
+      } catch {
+        return false;
       }
     },
     /**

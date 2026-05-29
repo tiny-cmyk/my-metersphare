@@ -37,6 +37,8 @@ import {
   PersonalGetModelConfigDetailUrl,
   PersonalModelConfigListUrl,
   SavePlatformUrl,
+  SsoBootstrapUrl,
+  SsoLogoutUrl,
   UpdateAPIKEYUrl,
   UpdateInfoUrl,
   UpdateLanguageUrl,
@@ -128,6 +130,16 @@ export function getLarkSuiteCallback(code: string) {
 
 export function logout() {
   return MSR.get<LoginRes>({ url: LogoutUrl });
+}
+
+// Google SSO：基于同源 ScriptPlatform sid cookie 建立本地会话
+export function ssoBootstrap() {
+  return MSR.post<LoginRes>({ url: SsoBootstrapUrl }, { ignoreCancelToken: true, errorMessageMode: 'none' });
+}
+
+// Google SSO：退出本地会话（与上游 ScriptPlatform 注销在前端各自调用）
+export function ssoLogout() {
+  return MSR.get<LoginRes>({ url: SsoLogoutUrl }, { ignoreCancelToken: true, errorMessageMode: 'none' });
 }
 
 export function getMenuList() {
