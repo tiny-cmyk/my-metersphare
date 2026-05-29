@@ -182,6 +182,7 @@ export default {
   'common.pass': 'Pass',
   'common.unPass': 'Fail pass',
   'common.block': 'Block',
+  'common.skip': 'NT',
   'common.fakeError': 'Fake error',
   'common.belongModule': 'Belong module',
   'common.moreSetting': 'More settings',
