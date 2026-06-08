@@ -33,13 +33,18 @@
                 {{ t('common.newCreate') }}
               </a-button>
               <ImportCase ref="importCaseRef" @init-modules="emit('initModules')" @confirm-import="confirmImport" />
+              <a-button v-permission="['FUNCTIONAL_CASE:READ+ADD']" class="ml-[12px]" @click="openNotionImport">
+                <template #icon><icon-import /></template>
+                {{ t('AI生成用例') }}
+              </a-button>
               <a-button
                 v-permission="['FUNCTIONAL_CASE:READ+ADD']"
                 class="ml-[12px]"
-                @click="openNotionImport"
+                :loading="notionSyncing"
+                @click="triggerNotionSync"
               >
-                <template #icon><icon-import /></template>
-                {{ t('从 Notion 导入') }}
+                <template #icon><icon-sync /></template>
+                {{ t('同步') }}
               </a-button>
               <MsAiButton
                 v-if="aiStore.aiSourceNameList.length > 0"
@@ -423,7 +428,7 @@
     <div class="notion-import-container">
       <!-- 第一步：输入 URL -->
       <div v-if="notionStep === 'input'" class="notion-step-input">
-        <p class="mb-[12px] text-[var(--color-text-2)] text-[13px]">
+        <p class="mb-[12px] text-[13px] text-[var(--color-text-2)]">
           输入 Notion 页面链接，AI 将读取页面内容并自动生成测试用例。
         </p>
         <a-input
@@ -435,12 +440,7 @@
         />
         <div class="flex justify-end gap-[8px]">
           <a-button @click="closeNotionModal">取消</a-button>
-          <a-button
-            type="primary"
-            :loading="notionLoading"
-            :disabled="!notionUrl.trim()"
-            @click="previewNotionCases"
-          >
+          <a-button type="primary" :loading="notionLoading" :disabled="!notionUrl.trim()" @click="previewNotionCases">
             {{ notionLoading ? 'AI 生成中...' : '生成测试用例' }}
           </a-button>
         </div>
@@ -449,21 +449,19 @@
       <!-- 第二步：预览 AI 生成结果 -->
       <div v-if="notionStep === 'preview'" class="notion-step-preview">
         <div class="notion-preview-header mb-[12px] flex items-center justify-between">
-          <span class="text-[var(--color-text-2)] text-[13px]">AI 已根据 Notion 页面内容生成以下测试用例，确认后将保存到用例库。</span>
+          <span class="text-[13px] text-[var(--color-text-2)]"
+            >AI 已根据 Notion 页面内容生成以下测试用例，确认后将保存到用例库。</span
+          >
           <a-button size="mini" @click="notionStep = 'input'">重新生成</a-button>
         </div>
         <div
-          class="notion-preview-content mb-[16px] max-h-[400px] overflow-y-auto rounded-[4px] border border-[var(--color-border-2)] bg-[var(--color-fill-1)] p-[16px] text-[13px] whitespace-pre-wrap"
+          class="notion-preview-content mb-[16px] max-h-[400px] overflow-y-auto whitespace-pre-wrap rounded-[4px] border border-[var(--color-border-2)] bg-[var(--color-fill-1)] p-[16px] text-[13px]"
         >
           {{ notionPreviewContent }}
         </div>
         <div class="flex justify-end gap-[8px]">
           <a-button @click="closeNotionModal">取消</a-button>
-          <a-button
-            type="primary"
-            :loading="notionSaving"
-            @click="saveNotionCases"
-          >
+          <a-button type="primary" :loading="notionSaving" @click="saveNotionCases">
             {{ notionSaving ? '保存中...' : '确认保存用例' }}
           </a-button>
         </div>
@@ -524,10 +522,12 @@
     getCaseExportConfig,
     getCaseList,
     getCustomFieldsTable,
-    stopCaseExport,
-    updateCaseRequest,
     notionPreview,
     notionSave,
+    notionSyncAll,
+    notionSyncByModule,
+    stopCaseExport,
+    updateCaseRequest,
   } from '@/api/modules/case-management/featureCase';
   import { getCaseRelatedInfo } from '@/api/modules/project-management/menuManagement';
   import { NAV_NAVIGATION } from '@/config/workbench';
@@ -617,71 +617,6 @@
     isInitAiDrawer.value = true;
     aiDrawerVisible.value = true;
   }
-
-  // ===== Notion 导入 =====
-  const notionModalVisible = ref<boolean>(false);
-  const notionStep = ref<'input' | 'preview'>('input');
-  const notionUrl = ref<string>('');
-  const notionPreviewContent = ref<string>('');
-  const notionLoading = ref<boolean>(false);
-  const notionSaving = ref<boolean>(false);
-
-  function openNotionImport() {
-    notionStep.value = 'input';
-    notionUrl.value = '';
-    notionPreviewContent.value = '';
-    notionModalVisible.value = true;
-  }
-
-  function closeNotionModal() {
-    notionModalVisible.value = false;
-  }
-
-  async function previewNotionCases() {
-    if (!notionUrl.value.trim()) return;
-    notionLoading.value = true;
-    try {
-      const result = await notionPreview({
-        notionUrl: notionUrl.value.trim(),
-        chatModelId: aiStore.aiSourceNameList[0]?.id || '',
-        organizationId: appStore.currentOrgId || '',
-        projectId: currentProjectId.value,
-        moduleId: props.activeFolder === 'all' ? (caseTreeData.value[0]?.id || '') : props.activeFolder,
-        templateId: templateId.value,
-      });
-      notionPreviewContent.value = result || '';
-      notionStep.value = 'preview';
-    } catch (e) {
-      Message.error('读取 Notion 页面失败，请检查链接或 AI 配置');
-    } finally {
-      notionLoading.value = false;
-    }
-  }
-
-  async function saveNotionCases() {
-    if (!notionPreviewContent.value) return;
-    notionSaving.value = true;
-    try {
-      await notionSave({
-        prompt: notionPreviewContent.value,
-        chatModelId: aiStore.aiSourceNameList[0]?.id || '',
-        organizationId: appStore.currentOrgId || '',
-        projectId: currentProjectId.value,
-        moduleId: props.activeFolder === 'all' ? (caseTreeData.value[0]?.id || '') : props.activeFolder,
-        templateId: templateId.value,
-        conversationId: getGenerateId(),
-      });
-      Message.success('测试用例已成功保存');
-      closeNotionModal();
-      emit('initModules');
-      initData();
-    } catch (e) {
-      Message.error('保存失败，请重试');
-    } finally {
-      notionSaving.value = false;
-    }
-  }
-  // ===== Notion 导入结束 =====
 
   function handleSyncFeatureCase(detail: AiCaseTransformResult) {
     aiDrawerVisible.value = false;
@@ -1742,6 +1677,93 @@
   }
 
   const templateId = ref<string>(''); // 模板ID
+
+  // ===== Notion 同步 =====
+  const notionSyncing = ref<boolean>(false);
+  async function triggerNotionSync() {
+    notionSyncing.value = true;
+    try {
+      const folder = props.activeFolder;
+      if (!folder || folder === 'all') {
+        await notionSyncAll();
+      } else {
+        await notionSyncByModule(folder, currentProjectId.value);
+      }
+      Message.success('同步完成');
+      emit('initModules');
+      initData();
+    } catch (e) {
+      Message.error('同步失败，请稍后重试');
+    } finally {
+      notionSyncing.value = false;
+    }
+  }
+
+  // ===== Notion 导入 =====
+  const notionModalVisible = ref<boolean>(false);
+  const notionStep = ref<'input' | 'preview'>('input');
+  const notionUrl = ref<string>('');
+  const notionPreviewContent = ref<string>('');
+  const notionLoading = ref<boolean>(false);
+  const notionSaving = ref<boolean>(false);
+
+  function openNotionImport() {
+    notionStep.value = 'input';
+    notionUrl.value = '';
+    notionPreviewContent.value = '';
+    notionModalVisible.value = true;
+  }
+
+  function closeNotionModal() {
+    notionModalVisible.value = false;
+  }
+
+  async function previewNotionCases() {
+    if (!notionUrl.value.trim()) return;
+    notionLoading.value = true;
+    try {
+      const result = await notionPreview({
+        notionUrl: notionUrl.value.trim(),
+        chatModelId: aiStore.aiSourceNameList[0]?.id || '',
+        organizationId: appStore.currentOrgId || '',
+        projectId: currentProjectId.value,
+        moduleId: props.activeFolder === 'all' ? caseTreeData.value[0]?.id || '' : props.activeFolder,
+        templateId: templateId.value,
+      });
+      notionPreviewContent.value = result || '';
+      notionStep.value = 'preview';
+    } catch (e) {
+      Message.error('读取 Notion 页面失败，请检查链接或 AI 配置');
+    } finally {
+      notionLoading.value = false;
+    }
+  }
+
+  async function saveNotionCases() {
+    if (!notionPreviewContent.value) return;
+    notionSaving.value = true;
+    try {
+      await notionSave({
+        prompt: notionPreviewContent.value,
+        chatModelId: aiStore.aiSourceNameList[0]?.id || '',
+        organizationId: appStore.currentOrgId || '',
+        projectId: currentProjectId.value,
+        moduleId: props.activeFolder === 'all' ? caseTreeData.value[0]?.id || '' : props.activeFolder,
+        templateId: templateId.value,
+        conversationId: getGenerateId(),
+      });
+      Message.success('测试用例已成功保存');
+      closeNotionModal();
+      emit('initModules');
+      initData();
+    } catch (e) {
+      Message.error('保存失败，请重试');
+    } finally {
+      notionSaving.value = false;
+    }
+  }
+  // ===== Notion 导入结束 =====
+
   // 处理自定义字段列
   let customFieldsColumns: Record<string, any>[] = [];
   const tableRef = ref<InstanceType<typeof MsBaseTable> | null>(null);

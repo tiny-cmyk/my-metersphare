@@ -98,7 +98,7 @@
   /**
    * @description 功能测试-功能用例
    */
-  import { computed, ref } from 'vue';
+  import { computed, nextTick, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
 
   import MsButton from '@/components/pure/ms-button/index.vue';
@@ -175,11 +175,17 @@
 
   // 处理用例树节点选中
   function caseNodeSelect(keys: string[], _offspringIds: string[], node: MsTreeNodeData) {
+    const isSameFolder = activeFolder.value === keys[0];
     [activeFolder.value] = keys;
     activeCaseType.value = 'module';
     offspringIds.value = [..._offspringIds];
     featureCaseStore.setModuleId(keys);
     activeFolderName.value = node?.title || node?.name;
+    // 点击同一个模块时，watch 不会触发，手动刷新列表
+    if (isSameFolder) {
+      // eslint-disable-next-line no-use-before-define
+      nextTick(() => caseTableRef.value?.initData());
+    }
   }
 
   const confirmLoading = ref(false);

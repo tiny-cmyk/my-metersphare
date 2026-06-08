@@ -16,7 +16,19 @@
     @cancel="handleDrawerCancel"
   >
     <template #tbutton>
-      <div class="font-normal">
+      <div class="flex items-center gap-[16px] font-normal">
+        <a-select
+          v-model="selectedProjectId"
+          class="w-[200px]"
+          :options="projectOptions"
+          allow-search
+          placeholder="选择项目"
+          @change="onProjectChange"
+        >
+          <template #prefix>
+            <span class="text-[var(--color-text-brand)]">项目</span>
+          </template>
+        </a-select>
         <a-select
           v-model="bugTemplateId"
           class="w-[240px]"
@@ -28,6 +40,7 @@
             <span class="text-[var(--color-text-brand)]">{{ t('system.orgTemplate.defectTemplates') }}</span>
           </template>
         </a-select>
+        <a-checkbox v-model="syncToLinear">同步到 Linear</a-checkbox>
       </div>
     </template>
     <div class="h-[calc(100vh-122px)] w-full p-[16px]">
@@ -38,6 +51,7 @@
         :bug-id="bugId"
         :case-type="props.caseType"
         :fill-config="props.fillConfig"
+        :project-id="selectedProjectId"
         file-name-max-width="300px"
         @save-params="saveParams"
       />
@@ -52,7 +66,8 @@
   import MsDrawer from '@/components/pure/ms-drawer/index.vue';
   import BugDetail from '@/views/bug-management/edit.vue';
 
-  import { createOrUpdateBug, getTemplateOption } from '@/api/modules/bug-management';
+  import { createLinearIssue, createOrUpdateBug, getTemplateOption } from '@/api/modules/bug-management';
+  import { getProjectList } from '@/api/modules/project-management/project';
   import {
     batchAddBugToApiCase,
     batchAddBugToFunctionCase,
@@ -100,13 +115,39 @@
   const isEdit = computed(() => props.bugId);
 
   const bugTemplateId = ref<string>('');
+  const syncToLinear = ref<boolean>(false);
+
+  interface ProjectOption {
+    label: string;
+    value: string;
+  }
+  const projectOptions = ref<ProjectOption[]>([]);
+  const selectedProjectId = ref<string>(appStore.currentProjectId);
 
   const templateOption = ref<TemplateOption[]>([]);
+
+  const loadProjects = async () => {
+    try {
+      const res = await getProjectList(appStore.currentOrgId);
+      projectOptions.value = res.map((p) => ({ label: p.name, value: p.id }));
+      if (!selectedProjectId.value && res.length > 0) {
+        selectedProjectId.value = res[0].id;
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const onProjectChange = async () => {
+    bugTemplateId.value = '';
+    // eslint-disable-next-line no-use-before-define
+    await getTemplateOptions();
+  };
 
   const getTemplateOptions = async () => {
     try {
       drawerLoading.value = true;
-      const res = await getTemplateOption(appStore.currentProjectId);
+      const res = await getTemplateOption(selectedProjectId.value || appStore.currentProjectId);
       templateOption.value = res.map((item) => {
         if (item.enableDefault && !isEdit.value) {
           // 选中默认模板
@@ -128,6 +169,7 @@
     bugDetailRef.value?.resetForm();
     showBugDrawer.value = false;
     bugTemplateId.value = '';
+    selectedProjectId.value = appStore.currentProjectId;
   }
 
   const batchAddApiMap: Record<string, (params: { request: BugEditFormObject; fileList: File[] }) => Promise<any>> = {
@@ -142,15 +184,35 @@
       const { request, fileList } = params;
       const extraParam =
         props.extraParams && typeof props.extraParams === 'function' ? await props.extraParams() : props.extraParams;
+      let createdBug: any = null;
       if (props.isBatch && props.caseType) {
         await batchAddApiMap[props.caseType]({ request: { ...request, ...extraParam }, fileList });
       } else if (props.isMinderBatch) {
         await batchAddBugToMinderCase({ request: { ...request, ...props.extraParams }, fileList });
       } else {
-        await createOrUpdateBug({ request: { ...request, ...extraParam }, fileList });
+        createdBug = await createOrUpdateBug({ request: { ...request, ...extraParam }, fileList });
       }
 
       Message.success(props.bugId ? t('common.updateSuccess') : t('common.createSuccess'));
+
+      // 同步到 Linear
+      if (syncToLinear.value && !props.bugId && createdBug) {
+        try {
+          const bugData = createdBug.data || createdBug;
+          const link = `${window.location.origin}/#/bug-management/index?id=${bugData.id}`;
+          const result = await createLinearIssue({
+            bugId: bugData.id,
+            num: bugData.num,
+            title: request.title || request.name || '',
+            description: '',
+            priority: request.severity || request.priority || '',
+            link,
+          });
+          Message.success(`已同步到 Linear：${result.identifier} ${result.url}`);
+        } catch (e) {
+          Message.warning('缺陷已创建，但同步 Linear 失败，请手动提交');
+        }
+      }
 
       if (isContinue) {
         bugDetailRef.value?.resetForm();
@@ -171,6 +233,7 @@
   };
 
   const initDefaultFields = async () => {
+    await loadProjects();
     await getTemplateOptions();
   };
 

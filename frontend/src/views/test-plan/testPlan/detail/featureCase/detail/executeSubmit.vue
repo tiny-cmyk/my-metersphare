@@ -44,9 +44,11 @@
   import { getMinderOperationParams } from '@/components/business/ms-minders/caseReviewMinder/utils';
   import ExecuteForm from '@/views/test-plan/testPlan/detail/featureCase/components/executeForm.vue';
 
+  import { getRobotList } from '@/api/modules/project-management/messageManagement';
   import { batchExecuteCase, runFeatureCase } from '@/api/modules/test-plan/testPlan';
   import { defaultExecuteForm } from '@/config/testPlan';
   import { useI18n } from '@/hooks/useI18n';
+  import { useUserStore } from '@/store';
   import useAppStore from '@/store/modules/app';
 
   import type { StepExecutionResult } from '@/models/caseManagement/featureCase';
@@ -61,6 +63,7 @@
     stepExecutionResult?: StepExecutionResult[];
     isDefaultActivate?: boolean; // 是否默认激活状态
     treeType?: 'MODULE' | 'COLLECTION';
+    caseName?: string; // 用例名称（用于飞书通知）
   }>();
 
   const emit = defineEmits<{
@@ -70,6 +73,7 @@
 
   const { t } = useI18n();
   const appStore = useAppStore();
+  const userStore = useUserStore();
 
   const form = ref<ExecuteFeatureCaseFormParams>({ ...defaultExecuteForm });
   const dialogForm = ref<ExecuteFeatureCaseFormParams>({ ...defaultExecuteForm });
@@ -185,6 +189,11 @@
       form.value = { ...defaultExecuteForm };
       achievedForm.value = false;
       emit('done', params.lastExecResult, params.content ?? '');
+      // 执行结果为失败时，推送飞书通知
+      if (params.lastExecResult === LastExecuteResults.ERROR) {
+        // eslint-disable-next-line no-use-before-define
+        notifyFeishuOnFail(props.caseName || props.caseId || '').catch(() => {});
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.log(error);
@@ -192,10 +201,45 @@
       submitLoading.value = false;
     }
   }
-</script>
 
-<style lang="less" scoped>
-  .execute-form :deep(.rich-wrapper) .halo-rich-text-editor .ProseMirror {
-    height: 58px;
+  /**
+   * 用例标记失败后推送飞书通知
+   * Webhook 由项目管理员在「项目管理 → 消息管理 → 机器人列表」里自助配置
+   */
+  async function notifyFeishuOnFail(caseName: string) {
+    try {
+      const robots = await getRobotList(appStore.currentProjectId);
+      const larkRobots = (robots || []).filter((r: any) => r.platform === 'LARK' && r.enable && r.webhook);
+      if (!larkRobots.length) return;
+
+      const executorName = userStore.name || '未知执行人';
+      const card = {
+        header: {
+          title: { content: '❌ 用例执行失败', tag: 'plain_text' },
+          template: 'red',
+        },
+        elements: [
+          {
+            tag: 'div',
+            text: {
+              tag: 'lark_md',
+              content: `**用例标题**：${caseName}\n**执行人**：${executorName}`,
+            },
+          },
+        ],
+      };
+
+      await Promise.allSettled(
+        larkRobots.map((robot: any) =>
+          fetch(robot.webhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ msg_type: 'interactive', card }),
+          })
+        )
+      );
+    } catch (_) {
+      // 通知失败不影响主流程
+    }
   }
-</style>
+</script>

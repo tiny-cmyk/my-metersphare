@@ -21,6 +21,7 @@
     </template>
 
     <template #operation="{ record }">
+      <MsButton :loading="linearLoading[record.id]" @click="submitToLinear(record)">提交 Linear</MsButton>
       <MsButton v-permission="['FUNCTIONAL_CASE:READ+UPDATE']" @click="cancelLink(record.id)">{{
         t('caseManagement.featureCase.cancelLink')
       }}</MsButton>
@@ -51,6 +52,7 @@
 <script setup lang="ts">
   import { ref } from 'vue';
   import { useVModel } from '@vueuse/core';
+  import { Message } from '@arco-design/web-vue';
 
   import MsButton from '@/components/pure/ms-button/index.vue';
   import MsBaseTable from '@/components/pure/ms-table/base-table.vue';
@@ -58,6 +60,7 @@
   import useTable from '@/components/pure/ms-table/useTable';
   import BugNamePopover from '@/views/case-management/caseManagementFeature/components/tabContent/tabBug/bugNamePopover.vue';
 
+  import { createLinearIssue } from '@/api/modules/bug-management';
   import { useI18n } from '@/hooks/useI18n';
   import { useAppStore } from '@/store';
   import { characterLimit } from '@/utils';
@@ -88,6 +91,28 @@
     (e: 'cancelLink', bugId: string): void;
     (e: 'update:keyword'): void;
   }>();
+
+  const linearLoading = ref<Record<string, boolean>>({});
+
+  async function submitToLinear(record: Record<string, any>) {
+    linearLoading.value[record.id] = true;
+    try {
+      const link = `${window.location.origin}/#/bug-management/index?id=${record.id}`;
+      const result = await createLinearIssue({
+        bugId: record.id,
+        num: record.num,
+        title: record.name,
+        description: record.content || '',
+        priority: record.severity || record.priority || '',
+        link,
+      });
+      Message.success(`已提交到 Linear：${result.identifier} ${result.url}`);
+    } catch (e) {
+      Message.error('提交 Linear 失败，请重试');
+    } finally {
+      linearLoading.value[record.id] = false;
+    }
+  }
 
   const bugTableRef = ref();
   const {

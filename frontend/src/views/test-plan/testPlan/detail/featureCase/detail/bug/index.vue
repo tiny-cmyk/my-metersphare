@@ -172,7 +172,7 @@
       slotName: 'operation',
       dataIndex: 'operation',
       fixed: 'right',
-      width: 100,
+      width: 200,
       showInTable: true,
       showDrag: false,
     },

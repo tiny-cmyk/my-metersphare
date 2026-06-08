@@ -183,3 +183,5 @@ export const CaseAiChatUrl = '/functional/case/ai/chat'; // AI用例聊天
 export const CaseAiBatchSaveUrl = '/functional/case/ai/batch/save'; // AI用例批量保存
 export const NotionPreviewUrl = '/functional/case/ai/notion/preview'; // Notion导入预览
 export const NotionSaveUrl = '/functional/case/ai/notion/save'; // Notion导入保存
+export const NotionSyncAllUrl = '/functional/case/ai/notion/sync/all'; // 手动触发全量同步
+export const NotionSyncModuleUrl = '/functional/case/ai/notion/sync/module'; // 手动触发指定模块同步

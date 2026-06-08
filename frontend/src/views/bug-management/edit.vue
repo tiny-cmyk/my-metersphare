@@ -168,7 +168,12 @@
           </a-skeleton>
           <a-form v-else :model="form" layout="vertical">
             <div style="display: inline-block; width: 100%; word-wrap: break-word">
-              <MsFormCreate ref="formCreateRef" v-model:formItem="formItem" v-model:api="fApi" :form-rule="formRules" />
+              <MsFormCreate
+                ref="formCreateRef"
+                v-model:form-item="formItem"
+                v-model:api="fApi"
+                :form-rule="formRules"
+              />
             </div>
 
             <a-form-item v-if="!isPlatformDefaultTemplate" field="tag" :label="t('bugManagement.tag')">
@@ -270,6 +275,7 @@
     isDrawer?: boolean; // 是否是弹窗模式
     caseType?: CaseLinkEnum; // 用例类型
     fileNameMaxWidth?: string; // 文件名称最大宽度
+    projectId?: string; // 指定项目ID，不传则使用当前项目
     fillConfig?: {
       isQuickFillContent: boolean; // 是否快速填充内容
       detailId: string; // 快填详情id
@@ -291,7 +297,7 @@
 
   const appStore = useAppStore();
   const form = ref<BugEditFormObject>({
-    projectId: appStore.currentProjectId,
+    projectId: props.projectId || appStore.currentProjectId,
     title: '',
     description: '',
     templateId: '',
@@ -320,7 +326,7 @@
   const formRules = ref<FormItem[]>([]);
   const formItem = ref<FormRuleItem[]>([]);
   const fApi = ref<any>(null);
-  const currentProjectId = computed(() => appStore.currentProjectId);
+  const currentProjectId = computed(() => props.projectId || appStore.currentProjectId);
   const associatedDrawer = ref(false);
   const loading = ref(false);
   const acceptType = ref('none'); // 模块-上传文件类型
@@ -451,7 +457,7 @@
     if (v) {
       try {
         isLoading.value = true;
-        let param = { projectId: appStore.currentProjectId, id: v };
+        let param = { projectId: currentProjectId.value, id: v };
         if (request) {
           param = { ...param, ...request };
         }
@@ -637,7 +643,7 @@
     const { templateId } = form.value;
     // 用当前模板初始化自定义字段
     form.value = {
-      projectId: appStore.currentProjectId, // 取当前项目id
+      projectId: currentProjectId.value, // 取当前项目id
       title: '',
       description: '',
       templateId,

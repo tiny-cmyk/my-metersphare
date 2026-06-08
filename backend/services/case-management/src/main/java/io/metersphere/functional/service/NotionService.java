@@ -2,6 +2,12 @@ package io.metersphere.functional.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.metersphere.functional.dto.NotionCaseRow;
+import io.metersphere.functional.dto.NotionChildBlock;
+import io.metersphere.functional.domain.FunctionalCase;
+import io.metersphere.functional.domain.FunctionalCaseBlob;
 import io.metersphere.functional.request.NotionImportRequest;
 import io.metersphere.sdk.exception.MSException;
 import io.metersphere.system.dto.sdk.OptionDTO;
@@ -16,6 +22,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -250,6 +258,277 @@ public class NotionService {
         };
     }
 
+    // =================== Notion 页面层级遍历 ===================
+
+    /**
+     * 获取指定页面的所有直接子块（child_page 和 child_database 类型）
+     * 用于从产品页面（web4.0）往下遍历找到所有数据库
+     */
+    public List<NotionChildBlock> getChildBlocks(String pageId) {
+        List<NotionChildBlock> result = new ArrayList<>();
+        String cursor = null;
+        do {
+            try {
+                String url = NOTION_API_BASE + "/blocks/" + pageId + "/children?page_size=100";
+                if (cursor != null) {
+                    url += "&start_cursor=" + cursor;
+                }
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .header("Authorization", "Bearer " + notionToken)
+                        .header("Notion-Version", NOTION_VERSION)
+                        .GET()
+                        .timeout(Duration.ofSeconds(15))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 200) break;
+
+                JsonNode root = objectMapper.readTree(response.body());
+                for (JsonNode block : root.path("results")) {
+                    String type = block.path("type").asText("");
+                    String id = block.path("id").asText("");
+                    if (StringUtils.isBlank(id)) continue;
+
+                    if ("child_page".equals(type)) {
+                        String title = block.path("child_page").path("title").asText("");
+                        result.add(new NotionChildBlock(id, title, "child_page"));
+                    } else if ("child_database".equals(type)) {
+                        String title = block.path("child_database").path("title").asText("");
+                        result.add(new NotionChildBlock(id, title, "child_database"));
+                    }
+                }
+                cursor = root.path("has_more").asBoolean() ? root.path("next_cursor").asText(null) : null;
+            } catch (Exception e) {
+                break;
+            }
+        } while (cursor != null);
+        return result;
+    }
+
+    // =================== Notion Database 读写（双向同步核心） ===================
+
+    /**
+     * 查询 Notion 数据库中所有用例行（支持分页，自动遍历）
+     *
+     * @param databaseId Notion 数据库 ID（不带连字符的32位或带连字符的UUID格式）
+     * @return 所有行解析后的 NotionCaseRow 列表（包含 archived=true 的行，调用方自行过滤）
+     */
+    public List<NotionCaseRow> queryDatabase(String databaseId) {
+        List<NotionCaseRow> result = new ArrayList<>();
+        String cursor = null;
+        do {
+            try {
+                ObjectNode body = objectMapper.createObjectNode();
+                body.put("page_size", 100);
+                if (cursor != null) {
+                    body.put("start_cursor", cursor);
+                }
+                String bodyStr = objectMapper.writeValueAsString(body);
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(NOTION_API_BASE + "/databases/" + databaseId + "/query"))
+                        .header("Authorization", "Bearer " + notionToken)
+                        .header("Notion-Version", NOTION_VERSION)
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(bodyStr))
+                        .timeout(Duration.ofSeconds(30))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 200) {
+                    break;
+                }
+
+                JsonNode root = objectMapper.readTree(response.body());
+                for (JsonNode page : root.path("results")) {
+                    NotionCaseRow row = parsePageToRow(page);
+                    if (row != null) {
+                        result.add(row);
+                    }
+                }
+                cursor = root.path("has_more").asBoolean() ? root.path("next_cursor").asText(null) : null;
+            } catch (Exception e) {
+                break;
+            }
+        } while (cursor != null);
+        return result;
+    }
+
+    /**
+     * 将 Notion 页面 JSON 解析为 NotionCaseRow
+     */
+    private NotionCaseRow parsePageToRow(JsonNode page) {
+        try {
+            NotionCaseRow row = new NotionCaseRow();
+            row.setPageId(page.path("id").asText());
+            row.setLastEditedTime(page.path("last_edited_time").asText());
+            row.setArchived(page.path("archived").asBoolean(false));
+
+            JsonNode props = page.path("properties");
+            row.setName(extractTitle(props, "用例名称"));
+            row.setPriority(extractSelect(props, "优先级"));
+            row.setPrerequisite(extractRichText(props, "前置条件"));
+            row.setSteps(extractRichText(props, "测试步骤"));
+            row.setExpectedResult(extractRichText(props, "预期结果"));
+            row.setDescription(extractRichText(props, "备注"));
+            row.setModulePath(extractRichText(props, "模块路径"));
+            row.setCreatorName(extractRichText(props, "创建人"));
+            row.setTags(extractMultiSelect(props, "标签"));
+            return row;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String extractTitle(JsonNode props, String key) {
+        JsonNode arr = props.path(key).path("title");
+        if (arr.isArray() && !arr.isEmpty()) {
+            return arr.get(0).path("plain_text").asText("");
+        }
+        return "";
+    }
+
+    private String extractRichText(JsonNode props, String key) {
+        JsonNode arr = props.path(key).path("rich_text");
+        if (arr.isArray()) {
+            StringBuilder sb = new StringBuilder();
+            for (JsonNode rt : arr) {
+                sb.append(rt.path("plain_text").asText(""));
+            }
+            return sb.toString();
+        }
+        return "";
+    }
+
+    private String extractSelect(JsonNode props, String key) {
+        JsonNode prop = props.path(key);
+        // 兼容 Notion 的 Select 和 Status 两种字段类型
+        for (String typeKey : new String[]{"select", "status"}) {
+            JsonNode node = prop.path(typeKey);
+            if (!node.isMissingNode() && !node.isNull()) {
+                return node.path("name").asText("");
+            }
+        }
+        return "";
+    }
+
+    private List<String> extractMultiSelect(JsonNode props, String key) {
+        List<String> result = new ArrayList<>();
+        JsonNode arr = props.path(key).path("multi_select");
+        if (arr.isArray()) {
+            for (JsonNode item : arr) {
+                result.add(item.path("name").asText(""));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将 MeterSphere 用例变更推送回 Notion（更新 Notion 页面属性）
+     *
+     * @param notionPageId Notion 页面 ID
+     * @param msCase       更新后的 FunctionalCase
+     * @param blob         更新后的 FunctionalCaseBlob
+     * @param priority     优先级（P0-P3，来自自定义字段）
+     */
+    public void updateNotionPage(String notionPageId, FunctionalCase msCase,
+                                 FunctionalCaseBlob blob, String priority) {
+        try {
+            ObjectNode properties = objectMapper.createObjectNode();
+
+            // 用例名称
+            ArrayNode titleArr = objectMapper.createArrayNode();
+            titleArr.addObject().putObject("text").put("content",
+                    StringUtils.defaultString(msCase.getName()));
+            properties.set("用例名称", objectMapper.createObjectNode().set("title", titleArr));
+
+            // 优先级
+            if (StringUtils.isNotBlank(priority)) {
+                properties.set("优先级", objectMapper.createObjectNode()
+                        .set("select", objectMapper.createObjectNode().put("name", priority)));
+            }
+
+            // 前置条件
+            if (blob != null && blob.getPrerequisite() != null) {
+                properties.set("前置条件", buildRichTextProp(
+                        new String(blob.getPrerequisite(), StandardCharsets.UTF_8)));
+            }
+
+            // 测试步骤
+            if (blob != null && blob.getSteps() != null) {
+                properties.set("测试步骤", buildRichTextProp(
+                        new String(blob.getSteps(), StandardCharsets.UTF_8)));
+            }
+
+            // 预期结果
+            if (blob != null && blob.getExpectedResult() != null) {
+                properties.set("预期结果", buildRichTextProp(
+                        new String(blob.getExpectedResult(), StandardCharsets.UTF_8)));
+            }
+
+            // 备注
+            if (blob != null && blob.getDescription() != null) {
+                properties.set("备注", buildRichTextProp(
+                        new String(blob.getDescription(), StandardCharsets.UTF_8)));
+            }
+
+            // 标签
+            if (msCase.getTags() != null && !msCase.getTags().isEmpty()) {
+                ArrayNode multiSelect = objectMapper.createArrayNode();
+                msCase.getTags().forEach(tag -> multiSelect.addObject().put("name", tag));
+                properties.set("标签", objectMapper.createObjectNode().set("multi_select", multiSelect));
+            }
+
+            ObjectNode patchBody = objectMapper.createObjectNode();
+            patchBody.set("properties", properties);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(NOTION_API_BASE + "/pages/" + notionPageId))
+                    .header("Authorization", "Bearer " + notionToken)
+                    .header("Notion-Version", NOTION_VERSION)
+                    .header("Content-Type", "application/json")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(patchBody)))
+                    .timeout(Duration.ofSeconds(15))
+                    .build();
+
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            // 推送失败不影响主流程，记录日志即可
+        }
+    }
+
+    /**
+     * 在 Notion 中将页面归档（软删除）
+     */
+    public void archiveNotionPage(String notionPageId) {
+        try {
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("archived", true);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(NOTION_API_BASE + "/pages/" + notionPageId))
+                    .header("Authorization", "Bearer " + notionToken)
+                    .header("Notion-Version", NOTION_VERSION)
+                    .header("Content-Type", "application/json")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+                    .timeout(Duration.ofSeconds(15))
+                    .build();
+
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            // 归档失败不影响主流程
+        }
+    }
+
+    private ObjectNode buildRichTextProp(String content) {
+        // Notion rich_text 单个元素最大 2000 字符，超出截断
+        String safeContent = StringUtils.left(content, 2000);
+        ArrayNode richTextArr = objectMapper.createArrayNode();
+        richTextArr.addObject().putObject("text").put("content", safeContent);
+        return objectMapper.createObjectNode().set("rich_text", richTextArr);
+    }
+
     /**
      * 调用 AI 根据 Notion 页面内容生成测试用例
      */
@@ -274,25 +553,30 @@ public class NotionService {
         AiModelSourceDTO module = aiChatBaseService.getModule(aiChatRequest, userId);
 
         String prompt = String.format("""
-                你是一名专业的软件测试工程师。请根据以下需求文档内容，生成详细的功能测试用例。
+                你是一名专业的软件测试工程师。请根据以下需求文档内容，生成详细的功能测试用例，充分覆盖正常流程、边界条件和异常情况。
 
                 需求文档标题：%s
 
                 需求文档内容：
                 %s
 
-                请按照以下格式生成测试用例（每个用例包含：用例名称、前置条件、测试步骤、预期结果）：
+                **输出格式要求（严格遵守，不得有任何额外文字）：**
+                - 每条用例以独立行 `featureCaseStart` 开头，以独立行 `featureCaseEnd` 结尾
+                - 用例标题格式：`## 中文标题`（字符数不超过255）
+                - 标题下一行输出 `caseExpand`
+                - 禁止在用例容器外输出任何内容
 
-                # 用例名称
-                **前置条件：** xxx
-                **测试步骤：**
-                1. xxx
-                2. xxx
-                **预期结果：** xxx
-
-                ---
-
-                请生成尽可能完整的测试用例，覆盖正常流程、边界条件和异常情况。
+                **输出示例（严格按此结构）：**
+                featureCaseStart
+                ## 用例标题
+                caseExpand
+                ### 前置条件
+                前置条件内容
+                ### 步骤描述
+                | 用例步骤 | 预期结果 |
+                | -------- | -------- |
+                | 步骤1 | 预期结果1 |
+                featureCaseEnd
                 """, pageTitle, pageContent);
 
         AIChatOption option = AIChatOption.builder()

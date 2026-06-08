@@ -4,8 +4,10 @@ import io.metersphere.functional.dto.FunctionalCaseAIConfigDTO;
 import io.metersphere.functional.dto.FunctionalCaseAiDTO;
 import io.metersphere.functional.request.FunctionalCaseAIChatRequest;
 import io.metersphere.functional.request.NotionImportRequest;
+import io.metersphere.functional.request.NotionSyncRequest;
 import io.metersphere.functional.service.FunctionalCaseAIService;
 import io.metersphere.functional.service.NotionService;
+import io.metersphere.functional.service.NotionSyncService;
 import io.metersphere.sdk.constants.PermissionConstants;
 import io.metersphere.system.dto.request.ai.AIChatRequest;
 import io.metersphere.system.security.CheckOwner;
@@ -30,6 +32,9 @@ public class FunctionalCaseAIController {
 
     @Resource
     private NotionService notionService;
+
+    @Resource
+    private NotionSyncService notionSyncService;
 
     @GetMapping("/get/config")
     @Operation(summary = "用例管理-功能用例-获取用户AI提示词")
@@ -81,6 +86,29 @@ public class FunctionalCaseAIController {
     @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
     public void notionSave(@RequestBody FunctionalCaseAIChatRequest request) {
         functionalCaseAIService.batchSave(request, SessionUtils.getUserId());
+    }
+
+    @PostMapping("/notion/sync")
+    @Operation(summary = "用例管理-功能用例-从Notion产品页面同步所有用例到MeterSphere（手动触发）")
+    @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ_ADD)
+    @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
+    public void syncFromNotion(@Validated @RequestBody NotionSyncRequest request) {
+        notionSyncService.syncProductPage(request.getDatabaseId(), request.getProjectId(), SessionUtils.getUserId());
+    }
+
+    @PostMapping("/notion/sync/all")
+    @Operation(summary = "用例管理-功能用例-手动触发所有Notion配置立即同步")
+    @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ_ADD)
+    public void syncAllFromNotion() {
+        notionSyncService.syncAll(SessionUtils.getUserId());
+    }
+
+    @PostMapping("/notion/sync/module")
+    @Operation(summary = "用例管理-功能用例-手动触发指定模块的Notion同步")
+    @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ_ADD)
+    @CheckOwner(resourceId = "#request.getProjectId()", resourceType = "project")
+    public void syncByModule(@RequestBody NotionSyncRequest request) {
+        notionSyncService.syncByModule(request.getModuleId(), request.getProjectId(), SessionUtils.getUserId());
     }
 
 }

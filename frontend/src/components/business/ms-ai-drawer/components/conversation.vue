@@ -19,15 +19,9 @@
         {{ title }}
       </div>
     </template>
-    <div class="flex-1 overflow-hidden">
-      <a-checkbox-group v-model:model-value="checkedCases" class="flex max-h-full">
-        <BubbleList
-          ref="bubbleListRef"
-          :list="conversationItems"
-          :btn-loading="answering"
-          max-height="100%"
-          class="w-full"
-        >
+    <div class="flex-1 overflow-y-auto">
+      <a-checkbox-group v-model:model-value="checkedCases" class="flex min-h-full flex-col">
+        <BubbleList ref="bubbleListRef" :list="conversationItems" :btn-loading="answering" class="w-full">
           <!-- 自定义 loading -->
           <template #loading>
             <div class="loading-wrapper">

@@ -121,6 +121,7 @@
                   :case-id="activeCaseId"
                   :test-plan-id="route.query.id as string"
                   :step-execution-result="stepExecutionResult"
+                  :case-name="caseDetail.name"
                   @done="executeDone"
                 >
                   <template #headerRight>

@@ -20,8 +20,6 @@ import {
   CaseAiBatchSaveUrl,
   CaseAiChatUrl,
   CaseAiTransformUrl,
-  NotionPreviewUrl,
-  NotionSaveUrl,
   CheckCaseExportTaskUrl,
   checkFileIsUpdateUrl,
   CreateCaseModuleTreeUrl,
@@ -79,6 +77,10 @@ import {
   importExcelCaseUrl,
   importXMindCaseUrl,
   MoveCaseModuleTreeUrl,
+  NotionPreviewUrl,
+  NotionSaveUrl,
+  NotionSyncAllUrl,
+  NotionSyncModuleUrl,
   PreviewEditorImageUrl,
   PreviewFileUrl,
   publicAssociatedCaseUrl,
@@ -537,11 +539,28 @@ export function caseAiBatchSave(data: CaseAiBatchSaveParams) {
 }
 
 // Notion导入-预览AI生成的测试用例
-export function notionPreview(data: { notionUrl: string; chatModelId?: string; organizationId?: string; projectId: string; moduleId?: string; templateId?: string }) {
+export function notionPreview(data: {
+  notionUrl: string;
+  chatModelId?: string;
+  organizationId?: string;
+  projectId: string;
+  moduleId?: string;
+  templateId?: string;
+}) {
   return MSR.post<string>({ url: NotionPreviewUrl, data });
 }
 
 // Notion导入-确认保存AI生成的测试用例
 export function notionSave(data: CaseAiBatchSaveParams) {
   return MSR.post({ url: NotionSaveUrl, data });
+}
+
+// 手动触发所有Notion配置立即同步
+export function notionSyncAll() {
+  return MSR.post({ url: NotionSyncAllUrl });
+}
+
+// 手动触发指定模块的Notion同步
+export function notionSyncByModule(moduleId: string, projectId: string) {
+  return MSR.post({ url: NotionSyncModuleUrl, data: { moduleId, projectId } });
 }
