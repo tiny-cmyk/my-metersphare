@@ -501,7 +501,7 @@ public class NotionSyncService {
 
         fc.setName(StringUtils.left(row.getName(), 255));
         fc.setModuleId(moduleId);
-        fc.setTags(row.getTags());
+        // 不覆盖用户在 MS 手动标注的标签，Notion 同步只负责内容字段
         fc.setCreateUser(userId);
         fc.setUpdateUser(userId);
         fc.setUpdateTime(System.currentTimeMillis());
