@@ -501,7 +501,8 @@ public class NotionSyncService {
 
         fc.setName(StringUtils.left(row.getName(), 255));
         fc.setModuleId(moduleId);
-        // 不覆盖用户在 MS 手动标注的标签，Notion 同步只负责内容字段
+        // 合并标签：保留 MS 已有标签，同时追加 Notion 新增的标签，两边都不丢失
+        fc.setTags(mergeTags(fc.getTags(), row.getTags()));
         fc.setCreateUser(userId);
         fc.setUpdateUser(userId);
         fc.setUpdateTime(System.currentTimeMillis());
@@ -582,6 +583,16 @@ public class NotionSyncService {
             }
         }
         return lines;
+    }
+
+    /**
+     * 合并标签：保留 MS 已有标签，同时追加 Notion 新增标签，取两者并集（有序、去重）
+     */
+    private List<String> mergeTags(List<String> msTags, List<String> notionTags) {
+        LinkedHashSet<String> merged = new LinkedHashSet<>();
+        if (msTags != null) merged.addAll(msTags);
+        if (notionTags != null) merged.addAll(notionTags);
+        return new ArrayList<>(merged);
     }
 
     private String jsonString(String s) {
