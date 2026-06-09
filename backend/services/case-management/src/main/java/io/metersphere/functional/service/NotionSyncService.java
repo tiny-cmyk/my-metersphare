@@ -358,14 +358,17 @@ public class NotionSyncService {
                     mapping.setNotionDbId(dbId);
                     mapping.setNotionLastEdited(row.getLastEditedTime());
                     mapping.setMsLastUpdated(System.currentTimeMillis());
+                    mapping.setNotionTags(tagsToJson(row.getTags()));
                     mappingMapper.insert(mapping);
 
                 } else if (!StringUtils.equals(row.getLastEditedTime(), existing.getNotionLastEdited())) {
                     // 有变更，更新：更新人优先取 Notion "创建人" 字段
                     String updatorId = resolveUserId(row.getCreatorName(), userId);
-                    updateCase(existing.getMsCaseId(), row, moduleId, updatorId, customFieldsMap);
+                    List<String> lastNotionTags = tagsFromJson(existing.getNotionTags());
+                    updateCase(existing.getMsCaseId(), row, moduleId, updatorId, customFieldsMap, lastNotionTags);
                     existing.setNotionLastEdited(row.getLastEditedTime());
                     existing.setMsLastUpdated(System.currentTimeMillis());
+                    existing.setNotionTags(tagsToJson(row.getTags()));
                     mappingMapper.updateSyncTime(existing);
                 }
                 // lastEditedTime 不变 → 跳过
@@ -495,14 +498,15 @@ public class NotionSyncService {
     }
 
     private void updateCase(String caseId, NotionCaseRow row, String moduleId, String userId,
-                             Map<String, TemplateCustomFieldDTO> customFieldsMap) {
+                             Map<String, TemplateCustomFieldDTO> customFieldsMap,
+                             List<String> lastNotionTags) {
         FunctionalCase fc = functionalCaseMapper.selectByPrimaryKey(caseId);
         if (fc == null) return;
 
         fc.setName(StringUtils.left(row.getName(), 255));
         fc.setModuleId(moduleId);
-        // 合并标签：保留 MS 已有标签，同时追加 Notion 新增的标签，两边都不丢失
-        fc.setTags(mergeTags(fc.getTags(), row.getTags()));
+        // 三方合并标签：检测 Notion 侧的新增和删除，同时保留 MS 用户自己打的标签
+        fc.setTags(mergeTagsWithDiff(fc.getTags(), row.getTags(), lastNotionTags));
         fc.setCreateUser(userId);
         fc.setUpdateUser(userId);
         fc.setUpdateTime(System.currentTimeMillis());
@@ -586,13 +590,58 @@ public class NotionSyncService {
     }
 
     /**
-     * 合并标签：保留 MS 已有标签，同时追加 Notion 新增标签，取两者并集（有序、去重）
+     * 三方合并标签（支持删除传播）
+     *
+     * 规则：
+     *   - Notion 新增的标签（currentNotionTags 有但 lastNotionTags 无）→ 追加到 MS
+     *   - Notion 删除的标签（lastNotionTags 有但 currentNotionTags 无）→ 从 MS 移除
+     *   - MS 自行添加的标签（msTags 有但 lastNotionTags 无）→ 保留在 MS
+     *
+     * @param msTags            MS 当前标签
+     * @param currentNotionTags Notion 最新标签
+     * @param lastNotionTags    上次同步时记录的 Notion 标签（基准）
      */
-    private List<String> mergeTags(List<String> msTags, List<String> notionTags) {
-        LinkedHashSet<String> merged = new LinkedHashSet<>();
-        if (msTags != null) merged.addAll(msTags);
-        if (notionTags != null) merged.addAll(notionTags);
-        return new ArrayList<>(merged);
+    private List<String> mergeTagsWithDiff(List<String> msTags,
+                                            List<String> currentNotionTags,
+                                            List<String> lastNotionTags) {
+        Set<String> current = new HashSet<>(currentNotionTags != null ? currentNotionTags : Collections.emptyList());
+        Set<String> last    = new HashSet<>(lastNotionTags    != null ? lastNotionTags    : Collections.emptyList());
+
+        // Notion 侧新增的标签
+        Set<String> addedInNotion = new HashSet<>(current);
+        addedInNotion.removeAll(last);
+
+        // Notion 侧删除的标签
+        Set<String> deletedInNotion = new HashSet<>(last);
+        deletedInNotion.removeAll(current);
+
+        LinkedHashSet<String> result = new LinkedHashSet<>(msTags != null ? msTags : Collections.emptyList());
+        result.removeAll(deletedInNotion);
+        result.addAll(addedInNotion);
+        return new ArrayList<>(result);
+    }
+
+    /** 将标签列表序列化为 JSON 字符串，存入 notion_tags 列 */
+    private String tagsToJson(List<String> tags) {
+        if (tags == null || tags.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < tags.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(jsonString(tags.get(i)));
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    /** 将 notion_tags 列中的 JSON 字符串反序列化为标签列表 */
+    @SuppressWarnings("unchecked")
+    private List<String> tagsFromJson(String json) {
+        if (StringUtils.isBlank(json) || "[]".equals(json.trim())) return new ArrayList<>();
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, List.class);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
     }
 
     private String jsonString(String s) {

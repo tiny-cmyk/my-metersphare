@@ -21,5 +21,8 @@ public class NotionMsCaseMapping implements Serializable {
     /** MeterSphere updateTime 毫秒时间戳，用于变更检测 */
     private Long msLastUpdated;
 
+    /** 上次同步时 Notion 侧的标签列表（JSON 数组字符串），用于三方合并检测标签删除 */
+    private String notionTags;
+
     private static final long serialVersionUID = 1L;
 }
