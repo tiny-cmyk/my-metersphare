@@ -1,8 +1,10 @@
 package io.metersphere.functional.aspect;
 
 import io.metersphere.functional.domain.FunctionalCase;
+import io.metersphere.functional.request.FunctionalCaseBatchEditRequest;
 import io.metersphere.functional.request.FunctionalCaseDeleteRequest;
 import io.metersphere.functional.service.NotionSyncService;
+import org.apache.commons.collections4.CollectionUtils;
 import io.metersphere.sdk.util.LogUtils;
 import jakarta.annotation.Resource;
 import org.aspectj.lang.JoinPoint;
@@ -42,6 +44,32 @@ public class NotionSyncAspect {
             notionSyncService.asyncPushCaseToNotion(updatedCase.getId());
         } catch (Exception e) {
             LogUtils.error("[Notion同步] 推送用例更新到 Notion 失败，caseId={}: {}", updatedCase.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * 拦截 FunctionalCaseService.batchEditFunctionalCase()
+     * 批量打标签时，将每条涉及的用例推送到 Notion
+     */
+    @AfterReturning(
+            pointcut = "execution(* io.metersphere.functional.service.FunctionalCaseService.batchEditFunctionalCase(..))"
+    )
+    public void afterBatchCaseEdit(JoinPoint jp) {
+        if (NotionSyncService.isSyncingFromNotion()) {
+            return;
+        }
+        Object[] args = jp.getArgs();
+        if (args == null || args.length == 0 || !(args[0] instanceof FunctionalCaseBatchEditRequest request)) {
+            return;
+        }
+        // 只有标签有变化时才推送（tags非空 或 clear=true）
+        if (CollectionUtils.isEmpty(request.getTags()) && !request.isClear()) {
+            return;
+        }
+        try {
+            notionSyncService.asyncBatchPushTagChangesToNotion(request);
+        } catch (Exception e) {
+            LogUtils.error("[Notion同步] 触发批量推送到 Notion 失败: {}", e.getMessage());
         }
     }
 

@@ -383,6 +383,40 @@ public class NotionSyncService {
 
     // =================== MS → Notion（AOP 触发）===================
 
+    /**
+     * 批量编辑（标签/自定义字段）后，将每条涉及的用例推送到 Notion。
+     * 由 NotionSyncAspect 拦截 batchEditFunctionalCase 后调用。
+     */
+    @Async
+    public void asyncBatchPushTagChangesToNotion(io.metersphere.functional.request.FunctionalCaseBatchEditRequest request) {
+        try {
+            List<String> ids;
+            if (request.isSelectAll()) {
+                ids = extFunctionalCaseMapper.getIds(request, request.getProjectId(), false);
+                if (org.apache.commons.collections4.CollectionUtils.isNotEmpty(request.getExcludeIds())) {
+                    ids.removeAll(request.getExcludeIds());
+                }
+            } else {
+                ids = request.getSelectIds();
+            }
+            if (ids == null || ids.isEmpty()) return;
+            for (String id : ids) {
+                // 直接调用（已在异步线程内），无需二次 @Async
+                NotionMsCaseMapping mapping = mappingMapper.findByMsCaseId(id);
+                if (mapping == null) continue;
+                FunctionalCase msCase = functionalCaseMapper.selectByPrimaryKey(id);
+                if (msCase == null || Boolean.TRUE.equals(msCase.getDeleted())) continue;
+                FunctionalCaseBlob blob = functionalCaseBlobMapper.selectByPrimaryKey(id);
+                String priority = resolvePriority(id);
+                notionService.updateNotionPage(mapping.getNotionPageId(), msCase, blob, priority);
+                mapping.setMsLastUpdated(msCase.getUpdateTime());
+                mappingMapper.updateSyncTime(mapping);
+            }
+        } catch (Exception e) {
+            LogUtils.error("[Notion同步] 批量推送标签变更到 Notion 失败: {}", e.getMessage());
+        }
+    }
+
     @Async
     public void asyncPushCaseToNotion(String msCaseId) {
         NotionMsCaseMapping mapping = mappingMapper.findByMsCaseId(msCaseId);
