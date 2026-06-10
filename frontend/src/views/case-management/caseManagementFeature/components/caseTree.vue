@@ -226,6 +226,12 @@
             return e;
           });
           emits('caseNodeSelect', [restoredId], offspringIds, foundNode);
+          // MsTree data watcher 用 debounce(0) 包裹（macrotask），
+          // 用同级 setTimeout(0) 保证 expandNode 在 data watcher 重建后执行
+          const idsToExpand = [...ancestorIds];
+          setTimeout(() => {
+            idsToExpand.forEach((id) => msTreeRef.value?.expandNode(id, true));
+          }, 0);
         }
       }
 
