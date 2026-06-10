@@ -144,7 +144,7 @@
     isExpandAll.value = !isExpandAll.value;
   };
 
-  const activeFolder = ref<string>(featureCaseStore.moduleId[0] || 'all');
+  const activeFolder = ref<string>((route.query.moduleId as string) || featureCaseStore.moduleId[0] || 'all');
   const activeFolderName = ref('');
 
   // 选中节点
@@ -165,6 +165,8 @@
       router.push({
         name: CaseManagementRouteEnum.CASE_MANAGEMENT_CASE_RECYCLE,
       });
+    } else {
+      router.replace({ query: { ...route.query, moduleId: type } });
     }
   };
 
@@ -181,6 +183,7 @@
     offspringIds.value = [..._offspringIds];
     featureCaseStore.setModuleId(keys);
     activeFolderName.value = node?.title || node?.name;
+    router.replace({ query: { ...route.query, moduleId: keys[0] } });
     // 点击同一个模块时，watch 不会触发，手动刷新列表
     if (isSameFolder) {
       // eslint-disable-next-line no-use-before-define
