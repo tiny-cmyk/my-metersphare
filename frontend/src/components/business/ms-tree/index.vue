@@ -311,6 +311,12 @@
           });
           filterTreeData.value = val;
         }
+        // 重建 filterTreeData 后，通知 Arco tree 实际展开（node.expanded 只控制图标）
+        if (expandKeys.value.size > 0) {
+          nextTick(() => {
+            expandKeys.value.forEach((key) => treeRef.value?.expandNode(key, true));
+          });
+        }
       } else {
         updateDebouncedSearch();
       }

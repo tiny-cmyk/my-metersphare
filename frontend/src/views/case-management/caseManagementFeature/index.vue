@@ -98,7 +98,7 @@
   /**
    * @description 功能测试-功能用例
    */
-  import { computed, nextTick, ref } from 'vue';
+  import { computed, nextTick, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
 
   import MsButton from '@/components/pure/ms-button/index.vue';
@@ -197,6 +197,23 @@
   const caseTableRef = ref();
 
   const isAdvancedSearchMode = computed(() => caseTableRef.value?.isAdvancedSearchMode);
+
+  // 监听 URL 中 moduleId 变化（同路由内粘贴新 URL 时触发）
+  watch(
+    () => route.query.moduleId,
+    (newId) => {
+      if (!newId || newId === activeFolder.value) return;
+      activeFolder.value = newId as string;
+      if (['all', 'public', 'recycle'].includes(newId as string)) {
+        activeCaseType.value = 'folder';
+        offspringIds.value = [];
+        activeFolderName.value = '';
+      } else {
+        // 重新初始化树，触发 URL 恢复逻辑
+        caseTreeRef.value?.initModules();
+      }
+    }
+  );
 
   // 添加子模块
   async function confirmHandler(formValue: ConfirmValue) {

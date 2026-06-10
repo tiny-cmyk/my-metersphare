@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, ref, watch } from 'vue';
+  import { computed, ref, watch } from 'vue';
   import { useVModel } from '@vueuse/core';
   import { Message } from '@arco-design/web-vue';
 
@@ -229,21 +229,8 @@
         }
       }
 
-      // 先赋值，触发 MsTree 的 debounced data watcher（macrotask A）
+      // 赋值触发 MsTree data watcher，watcher 内部会用 expandKeys 展开节点
       caseTree.value = builtTree;
-
-      // nextTick 等 Vue flush → 此时 macrotask A 已调度
-      // setTimeout(0) 在 macrotask A 之后执行，expandNode 才能生效
-      const restoredIdForExpand = props.selectedKeys?.[0] as string;
-      if (restoredIdForExpand && !['all', 'public', 'recycle', ''].includes(restoredIdForExpand) && !isSetDefaultKey) {
-        const idsToExpand = [...(initExpandedKeys.value || [])];
-        nextTick(() => {
-          setTimeout(() => {
-            idsToExpand.forEach((id) => msTreeRef.value?.expandNode(id, true));
-          }, 0);
-        });
-      }
-
       featureCaseStore.setModulesTree(caseTree.value);
       if (!featureCaseStore.moduleId) {
         featureCaseStore.setModuleId(['all']);
