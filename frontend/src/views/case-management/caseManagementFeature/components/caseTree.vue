@@ -12,6 +12,7 @@
       ref="msTreeRef"
       v-model:focus-node-key="focusNodeKey"
       :selected-keys="props.selectedKeys"
+      :init-expanded-keys="initExpandedKeys"
       :data="caseTree"
       :keyword="moduleKeyword"
       :node-more-actions="caseMoreActions"
@@ -79,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, ref, watch } from 'vue';
+  import { computed, ref, watch } from 'vue';
   import { useVModel } from '@vueuse/core';
   import { Message } from '@arco-design/web-vue';
 
@@ -137,6 +138,7 @@
   const currentProjectId = computed(() => appStore.currentProjectId);
 
   const caseTree = ref<ModuleTreeNode[]>([]);
+  const initExpandedKeys = ref<string[]>([]);
 
   const moduleKeyword = useVModel(props, 'groupKeyword', emits);
 
@@ -219,11 +221,8 @@
         const ancestorIds: string[] = [];
         const foundNode = findNodePath(caseTree.value, restoredId, ancestorIds);
         if (foundNode) {
-          nextTick(() =>
-            nextTick(() => {
-              ancestorIds.forEach((id) => msTreeRef.value?.expandNode(id, true));
-            })
-          );
+          // 在 data watcher 重建 filterTreeData 前写入 expandKeys，使祖先节点正确展开
+          initExpandedKeys.value = [...ancestorIds];
           const offspringIds: string[] = [];
           mapTree(foundNode.children || [], (e) => {
             offspringIds.push(e.id);

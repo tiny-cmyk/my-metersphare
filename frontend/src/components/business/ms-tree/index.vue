@@ -109,6 +109,7 @@
   const props = withDefaults(
     defineProps<{
       keyword?: string; // 搜索关键字
+      initExpandedKeys?: (string | number)[]; // 初始展开的节点 key 列表（用于从外部恢复展开状态）
       titleClass?: string; // 标题样式类
       searchDebounce?: number; // 搜索防抖 ms 数
       draggable?: boolean; // 是否可拖拽
@@ -199,7 +200,7 @@
   const focusNodeKey = defineModel<string | number>('focusNodeKey', {
     default: '',
   });
-  const expandKeys = ref<Set<string | number>>(new Set([]));
+  const expandKeys = ref<Set<string | number>>(new Set(props.initExpandedKeys || []));
 
   const treeContainerRef: Ref = ref(null);
   const treeRef = ref<TreeInstance>();
