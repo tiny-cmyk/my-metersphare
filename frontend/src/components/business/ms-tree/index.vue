@@ -202,6 +202,15 @@
   });
   const expandKeys = ref<Set<string | number>>(new Set(props.initExpandedKeys || []));
 
+  watch(
+    () => props.initExpandedKeys,
+    (val) => {
+      if (val?.length) {
+        expandKeys.value = new Set(val);
+      }
+    }
+  );
+
   const treeContainerRef: Ref = ref(null);
   const treeRef = ref<TreeInstance>();
   const { isInitListener, containerStatusClass, setContainer, initScrollListener } = useContainerShadow({

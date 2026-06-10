@@ -202,7 +202,7 @@
     try {
       loading.value = true;
       const res = await getCaseModuleTree({ projectId: currentProjectId.value });
-      caseTree.value = mapTree<ModuleTreeNode>(res, (e) => {
+      const builtTree = mapTree<ModuleTreeNode>(res, (e) => {
         return {
           ...e,
           hideMoreAction: e.id === 'root' || props.isModal,
@@ -210,18 +210,15 @@
           count: props.modulesCount?.[e.id] || 0,
         };
       });
-      featureCaseStore.setModulesTree(caseTree.value);
-      if (!featureCaseStore.moduleId) {
-        featureCaseStore.setModuleId(['all']);
-      }
 
       // 从 URL 恢复模块选中状态：展开祖先节点并补发选中事件
+      // 必须在 caseTree.value 赋值之前设置 initExpandedKeys，
+      // 这样 MsTree 的 data watcher 触发时 expandKeys 已经包含祖先节点
       const restoredId = props.selectedKeys?.[0] as string;
       if (restoredId && !['all', 'public', 'recycle', ''].includes(restoredId) && !isSetDefaultKey) {
         const ancestorIds: string[] = [];
-        const foundNode = findNodePath(caseTree.value, restoredId, ancestorIds);
+        const foundNode = findNodePath(builtTree, restoredId, ancestorIds);
         if (foundNode) {
-          // 在 data watcher 重建 filterTreeData 前写入 expandKeys，使祖先节点正确展开
           initExpandedKeys.value = [...ancestorIds];
           const offspringIds: string[] = [];
           mapTree(foundNode.children || [], (e) => {
@@ -230,6 +227,13 @@
           });
           emits('caseNodeSelect', [restoredId], offspringIds, foundNode);
         }
+      }
+
+      // initExpandedKeys 已设置完毕，现在赋值触发 MsTree data watcher
+      caseTree.value = builtTree;
+      featureCaseStore.setModulesTree(caseTree.value);
+      if (!featureCaseStore.moduleId) {
+        featureCaseStore.setModuleId(['all']);
       }
 
       if (isSetDefaultKey) {
