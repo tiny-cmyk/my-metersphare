@@ -9,6 +9,7 @@
       :max-length="255"
     />
     <MsTree
+      ref="msTreeRef"
       v-model:focus-node-key="focusNodeKey"
       :selected-keys="props.selectedKeys"
       :data="caseTree"
@@ -78,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue';
+  import { computed, nextTick, ref, watch } from 'vue';
   import { useVModel } from '@vueuse/core';
   import { Message } from '@arco-design/web-vue';
 
@@ -111,6 +112,7 @@
   const { openModal } = useModal();
   const appStore = useAppStore();
   const focusNodeKey = ref<string>('');
+  const msTreeRef = ref();
   const loading = ref(false);
 
   const props = defineProps<{
@@ -158,6 +160,24 @@
 
   const selectedNodeKeys = ref(props.selectedKeys || []);
 
+  /**
+   * 在模块树中查找指定 ID 的节点，同时收集其祖先 ID（用于自动展开路径）
+   */
+  function findNodePath(nodes: ModuleTreeNode[], targetId: string, ancestorIds: string[]): ModuleTreeNode | null {
+    return (
+      nodes.reduce<ModuleTreeNode | null>((found, node) => {
+        if (found) return found;
+        if (node.id === targetId) return node;
+        const child = findNodePath((node.children || []) as ModuleTreeNode[], targetId, ancestorIds);
+        if (child) {
+          ancestorIds.push(node.id);
+          return child;
+        }
+        return null;
+      }, null) ?? null
+    );
+  }
+
   watch(
     () => props.selectedKeys,
     (val) => {
@@ -191,6 +211,24 @@
       featureCaseStore.setModulesTree(caseTree.value);
       if (!featureCaseStore.moduleId) {
         featureCaseStore.setModuleId(['all']);
+      }
+
+      // 从 URL 恢复模块选中状态：展开祖先节点并补发选中事件
+      const restoredId = props.selectedKeys?.[0] as string;
+      if (restoredId && !['all', 'public', 'recycle', ''].includes(restoredId) && !isSetDefaultKey) {
+        const ancestorIds: string[] = [];
+        const foundNode = findNodePath(caseTree.value, restoredId, ancestorIds);
+        if (foundNode) {
+          nextTick(() => {
+            ancestorIds.forEach((id) => msTreeRef.value?.expandNode(id, true));
+          });
+          const offspringIds: string[] = [];
+          mapTree(foundNode.children || [], (e) => {
+            offspringIds.push(e.id);
+            return e;
+          });
+          emits('caseNodeSelect', [restoredId], offspringIds, foundNode);
+        }
       }
 
       if (isSetDefaultKey) {
