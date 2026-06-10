@@ -219,9 +219,11 @@
         const ancestorIds: string[] = [];
         const foundNode = findNodePath(caseTree.value, restoredId, ancestorIds);
         if (foundNode) {
-          nextTick(() => {
-            ancestorIds.forEach((id) => msTreeRef.value?.expandNode(id, true));
-          });
+          nextTick(() =>
+            nextTick(() => {
+              ancestorIds.forEach((id) => msTreeRef.value?.expandNode(id, true));
+            })
+          );
           const offspringIds: string[] = [];
           mapTree(foundNode.children || [], (e) => {
             offspringIds.push(e.id);
