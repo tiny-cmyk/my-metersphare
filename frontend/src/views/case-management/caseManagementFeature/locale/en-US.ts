@@ -29,6 +29,8 @@ export default {
   'caseManagement.featureCase.deleteConfirm': 'Confirm',
   'caseManagement.featureCase.deleteSuccess': 'Delete Successfully',
   'caseManagement.featureCase.addSuccess': 'Add Successfully',
+  'caseManagement.featureCase.viewAdopted': 'View Adopted',
+  'caseManagement.featureCase.clearAdoptedFilter': 'Clear Filter',
   'caseManagement.featureCase.addGroupTip': 'Please enter the group name and press enter to save',
   'caseManagement.featureCase.moduleMoveSuccess': 'Move successfully',
   'caseManagement.featureCase.tableColumnID': 'ID',

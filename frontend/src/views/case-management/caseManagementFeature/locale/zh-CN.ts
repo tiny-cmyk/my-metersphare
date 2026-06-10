@@ -29,6 +29,8 @@ export default {
   'caseManagement.featureCase.deleteConfirm': '确认删除',
   'caseManagement.featureCase.deleteSuccess': '删除成功',
   'caseManagement.featureCase.addSuccess': '添加成功',
+  'caseManagement.featureCase.viewAdopted': '查看已采纳',
+  'caseManagement.featureCase.clearAdoptedFilter': '清除筛选',
   'caseManagement.featureCase.addGroupTip': '请输入分组名称，按回车键保存',
   'caseManagement.featureCase.moduleMoveSuccess': '移动成功',
   'caseManagement.featureCase.tableColumnID': 'ID',

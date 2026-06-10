@@ -37,14 +37,12 @@
                 <template #icon><icon-import /></template>
                 {{ t('AI生成用例') }}
               </a-button>
-              <a-button
-                v-permission="['FUNCTIONAL_CASE:READ+ADD']"
-                class="ml-[12px]"
-                :loading="notionSyncing"
-                @click="triggerNotionSync"
-              >
-                <template #icon><icon-sync /></template>
-                {{ t('同步') }}
+              <a-button class="ml-[12px]" :type="showingAdopted ? 'primary' : 'secondary'" @click="toggleAdoptedFilter">
+                {{
+                  showingAdopted
+                    ? t('caseManagement.featureCase.clearAdoptedFilter')
+                    : t('caseManagement.featureCase.viewAdopted')
+                }}
               </a-button>
               <MsAiButton
                 v-if="aiStore.aiSourceNameList.length > 0"
@@ -524,8 +522,6 @@
     getCustomFieldsTable,
     notionPreview,
     notionSave,
-    notionSyncAll,
-    notionSyncByModule,
     stopCaseExport,
     updateCaseRequest,
   } from '@/api/modules/case-management/featureCase';
@@ -561,7 +557,7 @@
     DragCase,
   } from '@/models/caseManagement/featureCase';
   import { ModuleTreeNode } from '@/models/common';
-  import { FilterType, ViewTypeEnum } from '@/enums/advancedFilterEnum';
+  import { FilterType, OperatorEnum, ViewTypeEnum } from '@/enums/advancedFilterEnum';
   import { CacheTabTypeEnum } from '@/enums/cacheTabEnum';
   import { MinderKeyEnum } from '@/enums/minderEnum';
   import { CaseManagementRouteEnum, RouteEnum } from '@/enums/routeEnum';
@@ -1678,27 +1674,6 @@
 
   const templateId = ref<string>(''); // 模板ID
 
-  // ===== Notion 同步 =====
-  const notionSyncing = ref<boolean>(false);
-  async function triggerNotionSync() {
-    notionSyncing.value = true;
-    try {
-      const folder = props.activeFolder;
-      if (!folder || folder === 'all') {
-        await notionSyncAll();
-      } else {
-        await notionSyncByModule(folder, currentProjectId.value);
-      }
-      Message.success('同步完成');
-      emit('initModules');
-      initData();
-    } catch (e) {
-      Message.error('同步失败，请稍后重试');
-    } finally {
-      notionSyncing.value = false;
-    }
-  }
-
   // ===== Notion 导入 =====
   const notionModalVisible = ref<boolean>(false);
   const notionStep = ref<'input' | 'preview'>('input');
@@ -1873,6 +1848,26 @@
     setAdvanceFilter(filter, id);
     loadList();
   };
+
+  // ===== 已采纳筛选 =====
+  const showingAdopted = ref(false);
+  async function toggleAdoptedFilter() {
+    showingAdopted.value = !showingAdopted.value;
+    if (showingAdopted.value) {
+      await handleAdvSearch(
+        {
+          searchMode: 'AND',
+          conditions: [{ name: 'tags', operator: OperatorEnum.BELONG_TO, value: ['已采纳'] }],
+        },
+        ''
+      );
+    } else {
+      resetSelector();
+      keyword.value = '';
+      await getLoadListParams();
+      loadList();
+    }
+  }
   // 更新用例等级
   async function handleStatusChange(record: any) {
     try {
