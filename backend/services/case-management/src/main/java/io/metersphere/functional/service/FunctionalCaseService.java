@@ -848,8 +848,7 @@ public class FunctionalCaseService {
 
             // 保留模块层级：预先计算每条用例对应的目标 moduleId
             Map<String, String> targetModuleIdMap = null;
-            if (Boolean.TRUE.equals(request.getPreserveModuleStructure())
-                    && StringUtils.isNotBlank(request.getSourceModuleId())) {
+            if (Boolean.TRUE.equals(request.getPreserveModuleStructure())) {
                 List<FunctionalCaseModule> allModules = functionalCaseModuleService.getAllModulesByProjectId(request.getProjectId());
                 Map<String, FunctionalCaseModule> moduleMap = allModules.stream()
                         .collect(Collectors.toMap(FunctionalCaseModule::getId, m -> m));
@@ -962,23 +961,18 @@ public class FunctionalCaseService {
      * 若 moduleId == sourceModuleId，返回空列表（放在 target 根）。
      */
     private List<String> getRelativePath(Map<String, FunctionalCaseModule> moduleMap, String moduleId, String sourceModuleId) {
-        if (StringUtils.equals(moduleId, sourceModuleId)) {
+        // If sourceModuleId is specified and current module IS the source, place at target root
+        if (StringUtils.isNotBlank(sourceModuleId) && StringUtils.equals(moduleId, sourceModuleId)) {
             return Collections.emptyList();
         }
         LinkedList<String> path = new LinkedList<>();
         String current = moduleId;
-        while (current != null && !StringUtils.equals(current, sourceModuleId)) {
+        while (StringUtils.isNotBlank(current) && !StringUtils.equals(current, "0")) {
             FunctionalCaseModule module = moduleMap.get(current);
-            if (module == null) {
-                // 模块不在 map 中（可能是 root），停止
-                return Collections.emptyList();
-            }
+            if (module == null) break; // reached virtual root
+            if (StringUtils.isNotBlank(sourceModuleId) && StringUtils.equals(module.getId(), sourceModuleId)) break;
             path.addFirst(module.getName());
             current = module.getParentId();
-        }
-        if (!StringUtils.equals(current, sourceModuleId)) {
-            // 未找到 sourceModuleId 祖先，放在 target 根
-            return Collections.emptyList();
         }
         return path;
     }
@@ -1018,16 +1012,9 @@ public class FunctionalCaseService {
     }
 
     private String getCopyName(String name, long oldNum, long newNum) {
-        if (!StringUtils.startsWith(name, "copy_")) {
-            name = "copy_" + name;
+        if (name.length() > 255) {
+            name = name.substring(0, 252) + "...";
         }
-        if (name.length() > 250) {
-            name = name.substring(0, 200) + "...";
-        }
-        if (StringUtils.endsWith(name, "_" + oldNum)) {
-            name = StringUtils.substringBeforeLast(name, "_" + oldNum);
-        }
-        name = name + "_" + newNum;
         return name;
     }
 
