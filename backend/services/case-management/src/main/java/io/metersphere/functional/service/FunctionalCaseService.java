@@ -846,6 +846,17 @@ public class FunctionalCaseService {
             //自定义字段
             Map<String, List<FunctionalCaseCustomField>> customFieldMap = functionalCaseCustomFieldService.getCustomFieldMapByCaseIds(ids);
 
+            // 保留模块层级：预先计算每条用例对应的目标 moduleId
+            Map<String, String> targetModuleIdMap = null;
+            if (Boolean.TRUE.equals(request.getPreserveModuleStructure())
+                    && StringUtils.isNotBlank(request.getSourceModuleId())) {
+                List<FunctionalCaseModule> allModules = functionalCaseModuleService.getAllModulesByProjectId(request.getProjectId());
+                Map<String, FunctionalCaseModule> moduleMap = allModules.stream()
+                        .collect(Collectors.toMap(FunctionalCaseModule::getId, m -> m));
+                targetModuleIdMap = resolveTargetModuleIds(ids, functionalCaseMap, moduleMap,
+                        request.getSourceModuleId(), request.getModuleId(), request.getProjectId(), userId);
+            }
+
             AtomicReference<Long> nextOrder = new AtomicReference<>(getNextOrder(request.getProjectId()));
 
             List<FunctionalCase> addList = new ArrayList<>();
@@ -855,6 +866,7 @@ public class FunctionalCaseService {
             Map<String, List<String>> addFileAssociationMap = new HashMap<>();
             Map<FunctionalCase, FunctionalCaseHistoryLogDTO> addLogMap = new HashMap<>();
 
+            final Map<String, String> finalTargetModuleIdMap = targetModuleIdMap;
             for (String s : ids) {
                 String id = IDGenerator.nextStr();
                 FunctionalCase functionalCase = functionalCaseMap.get(s);
@@ -863,11 +875,14 @@ public class FunctionalCaseService {
                 List<FileAssociation> fileAssociationList = fileAssociationMap.get(s);
                 List<FunctionalCaseCustomField> customFields = customFieldMap.get(s);
                 Long num = functionalCase.getNum();
+                String resolvedModuleId = (finalTargetModuleIdMap != null)
+                        ? finalTargetModuleIdMap.getOrDefault(s, request.getModuleId())
+                        : request.getModuleId();
 
                 Optional.ofNullable(functionalCase).ifPresent(functional -> {
                     functional.setId(id);
                     functional.setRefId(id);
-                    functional.setModuleId(request.getModuleId());
+                    functional.setModuleId(resolvedModuleId);
                     functional.setNum(getNextNum(request.getProjectId()));
                     functional.setName(getCopyName(functionalCase.getName(), num, functional.getNum()));
                     functional.setReviewStatus(FunctionalCaseReviewStatus.UN_REVIEWED.name());
@@ -940,6 +955,66 @@ public class FunctionalCaseService {
 
 
         }
+    }
+
+    /**
+     * 计算 moduleId 相对于 sourceModuleId 的路径（名称列表，从 source 的直接子节点到 moduleId）。
+     * 若 moduleId == sourceModuleId，返回空列表（放在 target 根）。
+     */
+    private List<String> getRelativePath(Map<String, FunctionalCaseModule> moduleMap, String moduleId, String sourceModuleId) {
+        if (StringUtils.equals(moduleId, sourceModuleId)) {
+            return Collections.emptyList();
+        }
+        LinkedList<String> path = new LinkedList<>();
+        String current = moduleId;
+        while (current != null && !StringUtils.equals(current, sourceModuleId)) {
+            FunctionalCaseModule module = moduleMap.get(current);
+            if (module == null) {
+                // 模块不在 map 中（可能是 root），停止
+                return Collections.emptyList();
+            }
+            path.addFirst(module.getName());
+            current = module.getParentId();
+        }
+        if (!StringUtils.equals(current, sourceModuleId)) {
+            // 未找到 sourceModuleId 祖先，放在 target 根
+            return Collections.emptyList();
+        }
+        return path;
+    }
+
+    /**
+     * 为每个 caseId 计算其在目标树中的 moduleId（保留相对路径，按需创建模块）。
+     */
+    private Map<String, String> resolveTargetModuleIds(
+            List<String> caseIds,
+            Map<String, FunctionalCase> caseMap,
+            Map<String, FunctionalCaseModule> moduleMap,
+            String sourceModuleId,
+            String targetModuleId,
+            String projectId,
+            String userId) {
+        Map<String, String> result = new HashMap<>();
+        Map<String, String> pathCache = new HashMap<>(); // pathKey -> resolvedModuleId
+
+        for (String caseId : caseIds) {
+            FunctionalCase fc = caseMap.get(caseId);
+            if (fc == null) {
+                result.put(caseId, targetModuleId);
+                continue;
+            }
+            List<String> path = getRelativePath(moduleMap, fc.getModuleId(), sourceModuleId);
+            String pathKey = String.join("\u001F", path); // 用不可见分隔符避免名称冲突
+            if (!pathCache.containsKey(pathKey)) {
+                String current = targetModuleId;
+                for (String name : path) {
+                    current = functionalCaseModuleService.ensureChildModule(projectId, current, name, userId);
+                }
+                pathCache.put(pathKey, current);
+            }
+            result.put(caseId, pathCache.get(pathKey));
+        }
+        return result;
     }
 
     private String getCopyName(String name, long oldNum, long newNum) {

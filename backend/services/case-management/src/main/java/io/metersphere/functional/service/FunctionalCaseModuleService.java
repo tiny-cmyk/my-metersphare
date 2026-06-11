@@ -404,4 +404,42 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
         }
         return functionalCaseModuleMapper.selectByPrimaryKey(id).getName();
     }
+
+    /**
+     * 查询项目下所有模块（不含 root 虚拟节点）。
+     */
+    public List<FunctionalCaseModule> getAllModulesByProjectId(String projectId) {
+        FunctionalCaseModuleExample example = new FunctionalCaseModuleExample();
+        example.createCriteria().andProjectIdEqualTo(projectId);
+        return functionalCaseModuleMapper.selectByExample(example);
+    }
+
+    /**
+     * 在指定父模块下查找或创建名称为 name 的子模块，返回子模块 ID。
+     * 用于批量复制时保留模块层级结构。
+     */
+    public String ensureChildModule(String projectId, String parentId, String name, String userId) {
+        FunctionalCaseModuleExample example = new FunctionalCaseModuleExample();
+        example.createCriteria()
+                .andProjectIdEqualTo(projectId)
+                .andParentIdEqualTo(parentId)
+                .andNameEqualTo(name);
+        List<FunctionalCaseModule> existing = functionalCaseModuleMapper.selectByExample(example);
+        if (!existing.isEmpty()) {
+            return existing.get(0).getId();
+        }
+        FunctionalCaseModule module = new FunctionalCaseModule();
+        module.setId(IDGenerator.nextStr());
+        module.setName(name);
+        module.setParentId(parentId);
+        module.setProjectId(projectId);
+        long now = System.currentTimeMillis();
+        module.setCreateTime(now);
+        module.setUpdateTime(now);
+        module.setPos(this.countPos(parentId));
+        module.setCreateUser(userId);
+        module.setUpdateUser(userId);
+        functionalCaseModuleMapper.insert(module);
+        return module.getId();
+    }
 }

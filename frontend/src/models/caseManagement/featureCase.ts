@@ -159,6 +159,8 @@ export interface BatchMoveOrCopyType {
   selectAll: boolean;
   excludeIds: string[] | undefined;
   condition: Record<string, any>;
+  preserveModuleStructure?: boolean;
+  sourceModuleId?: string;
 }
 export type CaseEditType = 'STEP' | 'TEXT';
 // 创建或者更新

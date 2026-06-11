@@ -1505,7 +1505,11 @@
         groupKeyword.value = '';
         Message.success(t('caseManagement.featureCase.batchMoveSuccess'));
       } else {
-        await batchCopyToModules(params);
+        await batchCopyToModules({
+          ...params,
+          preserveModuleStructure: true,
+          sourceModuleId: props.activeFolder === 'all' ? '' : props.activeFolder,
+        });
         batchParams.value = cloneDeep(initBatchParams);
         Message.success(t('caseManagement.featureCase.batchCopySuccess'));
       }
