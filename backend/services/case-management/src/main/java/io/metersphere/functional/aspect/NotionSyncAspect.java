@@ -15,11 +15,11 @@ import org.springframework.stereotype.Component;
 /**
  * MeterSphere → Notion 反向同步切面
  *
- * 监听用例的更新和删除操作，异步推送变更到 Notion。
- * 当操作来源本身就是 Notion 同步（isSyncingFromNotion()==true）时跳过，防止双向循环。
+ * NOTE: 已停用 — 用例现在由 AI Agent 直接写入 MeterSphere，不再需要双向同步 Notion。
+ * 若需恢复，取消注释 @Aspect 和 @Component 即可。
  */
-@Aspect
-@Component
+// @Aspect   // 已停用
+// @Component  // 已停用
 public class NotionSyncAspect {
 
     @Resource
