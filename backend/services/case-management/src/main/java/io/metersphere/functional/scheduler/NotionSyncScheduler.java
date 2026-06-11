@@ -56,9 +56,11 @@ public class NotionSyncScheduler {
     /**
      * 应用完全就绪后：解析 notion.sync.mappings 配置，异步执行一次全量同步
      * 使用 ApplicationReadyEvent 而非 @PostConstruct，确保所有 MyBatis XML fragments 已加载
+     *
+     * NOTE: Notion→MS 同步已停用，不再需要此功能（用例现在由 AI Agent 直接写入 MeterSphere）
      */
     @Async
-    @EventListener(ApplicationReadyEvent.class)
+    // @EventListener(ApplicationReadyEvent.class)  // 已停用
     public void initSync() {
         List<String[]> mappings = parseMappings();
         if (mappings.isEmpty()) {
@@ -81,8 +83,10 @@ public class NotionSyncScheduler {
     /**
      * 定时任务：按 notion.sync.interval-ms 间隔（默认5分钟）自动同步
      * 同步对象：notion_sync_config 表中所有 enabled=1 的配置
+     *
+     * NOTE: Notion→MS 同步已停用（用例现在由 AI Agent 直接写入 MeterSphere）
      */
-    @Scheduled(fixedDelayString = "${notion.sync.interval-ms:300000}")
+    // @Scheduled(fixedDelayString = "${notion.sync.interval-ms:300000}")  // 已停用
     public void scheduledSync() {
         List<NotionSyncConfig> configs = syncConfigMapper.findAllEnabled();
         if (CollectionUtils.isEmpty(configs)) {
