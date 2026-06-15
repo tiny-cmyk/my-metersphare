@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config ./config/vite.config.dev.ts",
-    "build": "vue-tsc --noEmit && vite build --config ./config/vite.config.prod.ts",
+    "build": "vue-tsc --noEmit && NODE_OPTIONS=--max-old-space-size=8192 vite build --config ./config/vite.config.prod.ts",
     "build:local": "vue-tsc --noEmit &&  vite build --config ./config/vite.config.prod.ts --mode development",
     "build:localProd": "vue-tsc --noEmit &&  vite build --config ./config/vite.config.prod.ts --mode prod",
     "report": "cross-env REPORT=true npm run build",
