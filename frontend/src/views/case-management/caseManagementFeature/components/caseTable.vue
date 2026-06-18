@@ -1501,7 +1501,11 @@
         moduleId: selectedModuleKeys.value[0],
       };
       if (isMove.value) {
-        await batchMoveToModules(params);
+        await batchMoveToModules({
+          ...params,
+          preserveModuleStructure: true,
+          sourceModuleId: props.activeFolder === 'all' ? '' : props.activeFolder,
+        });
         groupKeyword.value = '';
         Message.success(t('caseManagement.featureCase.batchMoveSuccess'));
       } else {

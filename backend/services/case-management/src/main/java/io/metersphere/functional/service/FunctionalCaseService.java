@@ -820,8 +820,26 @@ public class FunctionalCaseService {
     public void batchMoveFunctionalCaseByIds(FunctionalCaseBatchMoveRequest request, String userId, List<String> ids) {
         if (CollectionUtils.isNotEmpty(ids)) {
             User user = userMapper.selectByPrimaryKey(userId);
-            List<String> refId = extFunctionalCaseMapper.getRefIds(ids, false);
-            extFunctionalCaseMapper.batchMoveModule(request, refId, userId);
+            if (Boolean.TRUE.equals(request.getPreserveModuleStructure())) {
+                Map<String, FunctionalCase> functionalCaseMap = copyBaseInfo(request.getProjectId(), ids);
+                List<FunctionalCaseModule> allModules = functionalCaseModuleService.getAllModulesByProjectId(request.getProjectId());
+                Map<String, FunctionalCaseModule> moduleMap = allModules.stream()
+                        .collect(Collectors.toMap(FunctionalCaseModule::getId, m -> m));
+                Map<String, String> targetModuleIdMap = resolveTargetModuleIds(ids, functionalCaseMap, moduleMap,
+                        request.getSourceModuleId(), request.getModuleId(), request.getProjectId(), userId);
+                long now = System.currentTimeMillis();
+                for (Map.Entry<String, String> entry : targetModuleIdMap.entrySet()) {
+                    FunctionalCase update = new FunctionalCase();
+                    update.setId(entry.getKey());
+                    update.setModuleId(entry.getValue());
+                    update.setUpdateUser(userId);
+                    update.setUpdateTime(now);
+                    functionalCaseMapper.updateByPrimaryKeySelective(update);
+                }
+            } else {
+                List<String> refId = extFunctionalCaseMapper.getRefIds(ids, false);
+                extFunctionalCaseMapper.batchMoveModule(request, refId, userId);
+            }
             functionalCaseNoticeService.batchSendNotice(request.getProjectId(), ids, user, NoticeConstants.Event.UPDATE);
         }
     }
