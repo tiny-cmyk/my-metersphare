@@ -353,6 +353,7 @@
     textDescription: '',
     expectedResult: '',
     description: '',
+    automationSteps: '',
     publicCase: false,
     moduleId: modelId.value,
     versionId: '',
