@@ -317,6 +317,7 @@ public class FunctionalCaseService {
         functionalCaseBlob.setExpectedResult(StringUtils.defaultIfBlank(request.getExpectedResult(), StringUtils.EMPTY).getBytes(StandardCharsets.UTF_8));
         functionalCaseBlob.setPrerequisite(StringUtils.defaultIfBlank(request.getPrerequisite(), StringUtils.EMPTY).getBytes(StandardCharsets.UTF_8));
         functionalCaseBlob.setDescription(StringUtils.defaultIfBlank(request.getDescription(), StringUtils.EMPTY).getBytes(StandardCharsets.UTF_8));
+        functionalCaseBlob.setAutomationSteps(StringUtils.defaultIfBlank(request.getAutomationSteps(), StringUtils.EMPTY).getBytes(StandardCharsets.UTF_8));
         functionalCaseBlobMapper.insertSelective(functionalCaseBlob);
         //保存自定义字段
         List<CaseCustomFieldDTO> customFields = request.getCustomFields();
@@ -367,6 +368,7 @@ public class FunctionalCaseService {
         functionalCaseDetailDTO.setExpectedResult(new String(caseBlob.getExpectedResult() == null ? new byte[0] : caseBlob.getExpectedResult(), StandardCharsets.UTF_8));
         functionalCaseDetailDTO.setPrerequisite(new String(caseBlob.getPrerequisite() == null ? new byte[0] : caseBlob.getPrerequisite(), StandardCharsets.UTF_8));
         functionalCaseDetailDTO.setDescription(new String(caseBlob.getDescription() == null ? new byte[0] : caseBlob.getDescription(), StandardCharsets.UTF_8));
+        functionalCaseDetailDTO.setAutomationSteps(new String(caseBlob.getAutomationSteps() == null ? new byte[0] : caseBlob.getAutomationSteps(), StandardCharsets.UTF_8));
 
         //模板校验 获取自定义字段
         checkTemplateCustomField(functionalCaseDetailDTO, functionalCase);
@@ -634,6 +636,10 @@ public class FunctionalCaseService {
         if (request.getDescription() != null) {
             hasUpdate = true;
             functionalCaseBlob.setDescription(StringUtils.defaultIfEmpty(request.getDescription(), StringUtils.EMPTY).getBytes(StandardCharsets.UTF_8));
+        }
+        if (request.getAutomationSteps() != null) {
+            hasUpdate = true;
+            functionalCaseBlob.setAutomationSteps(StringUtils.defaultIfEmpty(request.getAutomationSteps(), StringUtils.EMPTY).getBytes(StandardCharsets.UTF_8));
         }
         if (hasUpdate) {
             functionalCaseBlobMapper.updateByPrimaryKeyWithBLOBs(functionalCaseBlob);

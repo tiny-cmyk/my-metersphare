@@ -175,6 +175,7 @@ export interface CreateOrUpdateCase {
   textDescription: string;
   expectedResult: string; // 预期结果
   description: string;
+  automationSteps: string;
   publicCase: boolean; // 是否公共用例
   moduleId: string;
   versionId: string;
@@ -217,6 +218,7 @@ export interface DetailCase {
   expectedResult: string;
   prerequisite: string;
   description: string;
+  automationSteps: string;
   customFields?: Record<string, any>[];
   attachments?: AttachFileInfo[];
   followFlag?: boolean;

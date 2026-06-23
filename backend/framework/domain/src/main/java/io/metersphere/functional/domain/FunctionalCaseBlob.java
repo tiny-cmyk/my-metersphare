@@ -32,6 +32,9 @@ public class FunctionalCaseBlob implements Serializable {
     @Schema(description =  "备注")
     private byte[] description;
 
+    @Schema(description =  "自动化步骤")
+    private byte[] automationSteps;
+
     private static final long serialVersionUID = 1L;
 
     public enum Column {
@@ -40,7 +43,8 @@ public class FunctionalCaseBlob implements Serializable {
         textDescription("text_description", "textDescription", "LONGVARBINARY", false),
         expectedResult("expected_result", "expectedResult", "LONGVARBINARY", false),
         prerequisite("prerequisite", "prerequisite", "LONGVARBINARY", false),
-        description("description", "description", "LONGVARBINARY", false);
+        description("description", "description", "LONGVARBINARY", false),
+        automationSteps("automation_steps", "automationSteps", "LONGVARBINARY", false);
 
         private static final String BEGINNING_DELIMITER = "`";
 

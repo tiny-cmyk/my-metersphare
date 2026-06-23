@@ -57,6 +57,14 @@
             :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
           />
         </a-form-item>
+        <a-form-item field="automationSteps" :label="t('caseManagement.featureCase.automationSteps')">
+          <MsRichText
+            v-model:raw="form.automationSteps"
+            v-model:filed-ids="automationStepsFileIds"
+            :upload-image="handleUploadImage"
+            :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
+          />
+        </a-form-item>
         <AddAttachment v-model:file-list="fileList" multiple @change="handleChange" @link-file="associatedFile" />
       </a-form>
       <!-- 文件列表开始 -->
@@ -557,6 +565,8 @@
   const expectedResultFileIds = ref<string[]>([]);
   // 描述附件id
   const descriptionFileIds = ref<string[]>([]);
+  // 自动化步骤附件id
+  const automationStepsFileIds = ref<string[]>([]);
 
   // 所有附近文件id
   const allAttachmentsFileIds = computed(() => {
@@ -565,6 +575,7 @@
       ...textDescriptionFileIds.value,
       ...expectedResultFileIds.value,
       ...descriptionFileIds.value,
+      ...automationStepsFileIds.value,
     ];
   });
 

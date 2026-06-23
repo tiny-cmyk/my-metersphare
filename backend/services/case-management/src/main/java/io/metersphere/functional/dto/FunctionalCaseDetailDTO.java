@@ -87,6 +87,9 @@ public class FunctionalCaseDetailDTO implements Serializable {
     @Schema(description =  "备注")
     private String description;
 
+    @Schema(description =  "自动化步骤")
+    private String automationSteps;
+
     @Schema(description = "自定义字段属性")
     private List<TemplateCustomFieldDTO> customFields;
 

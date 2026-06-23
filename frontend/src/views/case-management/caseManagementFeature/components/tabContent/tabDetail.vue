@@ -36,7 +36,7 @@
         >
         </div>
       </a-form-item>
-      <StepDescription v-model:caseEditType="detailForm.caseEditType" :is-test-plan="props.isTestPlan" />
+      <StepDescription v-model:case-edit-type="detailForm.caseEditType" :is-test-plan="props.isTestPlan" />
       <!-- 步骤描述 -->
       <div v-if="detailForm.caseEditType === 'STEP'" class="mb-[20px] w-full">
         <AddStep
@@ -89,6 +89,20 @@
           :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
         />
         <div v-else v-dompurify-html="detailForm.description || '-'" class="markdown-body !break-words break-all"></div>
+      </a-form-item>
+      <a-form-item field="automationSteps" :label="t('caseManagement.featureCase.automationSteps')">
+        <MsRichText
+          v-if="isEditPreposition"
+          v-model:filed-ids="automationStepsFileIds"
+          v-model:raw="detailForm.automationSteps"
+          :upload-image="handleUploadImage"
+          :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
+        />
+        <div
+          v-else
+          v-dompurify-html="detailForm.automationSteps || '-'"
+          class="markdown-body !break-words break-all"
+        ></div>
       </a-form-item>
       <div v-if="isEditPreposition" class="flex justify-end">
         <a-button type="secondary" @click="handleCancel">{{ t('common.cancel') }}</a-button>
@@ -475,6 +489,8 @@
   const expectedResultFileIds = ref<string[]>([]);
   // 描述附件id
   const descriptionFileIds = ref<string[]>([]);
+  // 自动化步骤附件id
+  const automationStepsFileIds = ref<string[]>([]);
 
   // 所有附近文件id
   const allAttachmentsFileIds = computed(() => {
@@ -483,6 +499,7 @@
       ...textDescriptionFileIds.value,
       ...expectedResultFileIds.value,
       ...descriptionFileIds.value,
+      ...automationStepsFileIds.value,
     ];
   });
 

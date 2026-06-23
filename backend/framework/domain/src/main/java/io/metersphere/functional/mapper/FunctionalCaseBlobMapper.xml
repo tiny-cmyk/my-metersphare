@@ -10,6 +10,7 @@
     <result column="expected_result" jdbcType="LONGVARBINARY" property="expectedResult" />
     <result column="prerequisite" jdbcType="LONGVARBINARY" property="prerequisite" />
     <result column="description" jdbcType="LONGVARBINARY" property="description" />
+    <result column="automation_steps" jdbcType="LONGVARBINARY" property="automationSteps" />
   </resultMap>
   <sql id="Example_Where_Clause">
     <where>
@@ -73,7 +74,7 @@
     id
   </sql>
   <sql id="Blob_Column_List">
-    steps, text_description, expected_result, prerequisite, description
+    steps, text_description, expected_result, prerequisite, description, automation_steps
   </sql>
   <select id="selectByExampleWithBLOBs" parameterType="io.metersphere.functional.domain.FunctionalCaseBlobExample" resultMap="ResultMapWithBLOBs">
     select
@@ -124,12 +125,12 @@
     </if>
   </delete>
   <insert id="insert" parameterType="io.metersphere.functional.domain.FunctionalCaseBlob">
-    insert into functional_case_blob (id, steps, text_description, 
-      expected_result, prerequisite, 
-      description)
-    values (#{id,jdbcType=VARCHAR}, #{steps,jdbcType=LONGVARBINARY}, #{textDescription,jdbcType=LONGVARBINARY}, 
-      #{expectedResult,jdbcType=LONGVARBINARY}, #{prerequisite,jdbcType=LONGVARBINARY}, 
-      #{description,jdbcType=LONGVARBINARY})
+    insert into functional_case_blob (id, steps, text_description,
+      expected_result, prerequisite,
+      description, automation_steps)
+    values (#{id,jdbcType=VARCHAR}, #{steps,jdbcType=LONGVARBINARY}, #{textDescription,jdbcType=LONGVARBINARY},
+      #{expectedResult,jdbcType=LONGVARBINARY}, #{prerequisite,jdbcType=LONGVARBINARY},
+      #{description,jdbcType=LONGVARBINARY}, #{automationSteps,jdbcType=LONGVARBINARY})
   </insert>
   <insert id="insertSelective" parameterType="io.metersphere.functional.domain.FunctionalCaseBlob">
     insert into functional_case_blob
@@ -152,6 +153,9 @@
       <if test="description != null">
         description,
       </if>
+      <if test="automationSteps != null">
+        automation_steps,
+      </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="id != null">
@@ -171,6 +175,9 @@
       </if>
       <if test="description != null">
         #{description,jdbcType=LONGVARBINARY},
+      </if>
+      <if test="automationSteps != null">
+        #{automationSteps,jdbcType=LONGVARBINARY},
       </if>
     </trim>
   </insert>
@@ -201,6 +208,9 @@
       <if test="record.description != null">
         description = #{record.description,jdbcType=LONGVARBINARY},
       </if>
+      <if test="record.automationSteps != null">
+        automation_steps = #{record.automationSteps,jdbcType=LONGVARBINARY},
+      </if>
     </set>
     <if test="_parameter != null">
       <include refid="Update_By_Example_Where_Clause" />
@@ -213,7 +223,8 @@
       text_description = #{record.textDescription,jdbcType=LONGVARBINARY},
       expected_result = #{record.expectedResult,jdbcType=LONGVARBINARY},
       prerequisite = #{record.prerequisite,jdbcType=LONGVARBINARY},
-      description = #{record.description,jdbcType=LONGVARBINARY}
+      description = #{record.description,jdbcType=LONGVARBINARY},
+      automation_steps = #{record.automationSteps,jdbcType=LONGVARBINARY}
     <if test="_parameter != null">
       <include refid="Update_By_Example_Where_Clause" />
     </if>
@@ -243,6 +254,9 @@
       <if test="description != null">
         description = #{description,jdbcType=LONGVARBINARY},
       </if>
+      <if test="automationSteps != null">
+        automation_steps = #{automationSteps,jdbcType=LONGVARBINARY},
+      </if>
     </set>
     where id = #{id,jdbcType=VARCHAR}
   </update>
@@ -252,17 +266,18 @@
       text_description = #{textDescription,jdbcType=LONGVARBINARY},
       expected_result = #{expectedResult,jdbcType=LONGVARBINARY},
       prerequisite = #{prerequisite,jdbcType=LONGVARBINARY},
-      description = #{description,jdbcType=LONGVARBINARY}
+      description = #{description,jdbcType=LONGVARBINARY},
+      automation_steps = #{automationSteps,jdbcType=LONGVARBINARY}
     where id = #{id,jdbcType=VARCHAR}
   </update>
   <insert id="batchInsert" parameterType="map">
     insert into functional_case_blob
-    (id, steps, text_description, expected_result, prerequisite, description)
+    (id, steps, text_description, expected_result, prerequisite, description, automation_steps)
     values
     <foreach collection="list" item="item" separator=",">
-      (#{item.id,jdbcType=VARCHAR}, #{item.steps,jdbcType=LONGVARBINARY}, #{item.textDescription,jdbcType=LONGVARBINARY}, 
-        #{item.expectedResult,jdbcType=LONGVARBINARY}, #{item.prerequisite,jdbcType=LONGVARBINARY}, 
-        #{item.description,jdbcType=LONGVARBINARY})
+      (#{item.id,jdbcType=VARCHAR}, #{item.steps,jdbcType=LONGVARBINARY}, #{item.textDescription,jdbcType=LONGVARBINARY},
+        #{item.expectedResult,jdbcType=LONGVARBINARY}, #{item.prerequisite,jdbcType=LONGVARBINARY},
+        #{item.description,jdbcType=LONGVARBINARY}, #{item.automationSteps,jdbcType=LONGVARBINARY})
     </foreach>
   </insert>
   <insert id="batchInsertSelective" parameterType="map">
@@ -292,6 +307,9 @@
         </if>
         <if test="'description'.toString() == column.value">
           #{item.description,jdbcType=LONGVARBINARY}
+        </if>
+        <if test="'automation_steps'.toString() == column.value">
+          #{item.automationSteps,jdbcType=LONGVARBINARY}
         </if>
       </foreach>
       )

@@ -100,6 +100,7 @@ export default {
   'caseManagement.featureCase.PleaseSelect': 'Please select',
   'caseManagement.featureCase.expectedResult': 'Expected Result',
   'caseManagement.featureCase.remark': 'Remark',
+  'caseManagement.featureCase.automationSteps': 'Automation Steps',
   'caseManagement.featureCase.addAttachment': 'Add attachment',
   'caseManagement.featureCase.uploadFile': 'Upload File',
   'caseManagement.featureCase.storage': 'storage',

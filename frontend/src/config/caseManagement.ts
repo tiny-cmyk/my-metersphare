@@ -119,6 +119,7 @@ export const defaultCaseDetail: DetailCase = {
   textDescription: '',
   expectedResult: '', // 预期结果
   description: '',
+  automationSteps: '',
   publicCase: false, // 是否公共用例
   moduleId: '',
   versionId: '',

@@ -50,6 +50,9 @@ public class FunctionalCaseAddRequest implements Serializable {
     @Schema(description = "备注", defaultValue = "")
     private String description;
 
+    @Schema(description = "自动化步骤", defaultValue = "")
+    private String automationSteps;
+
     @Schema(description = "是否公共用例库")
     private String publicCase;
 

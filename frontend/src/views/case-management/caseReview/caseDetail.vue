@@ -34,7 +34,7 @@
             @clear="loadCaseList"
           />
           <MsCheckboxDropdown
-            v-model:selectList="type"
+            v-model:select-list="type"
             :disabled="onlyMineStatus"
             :options="typeOptions"
             :title="t('caseManagement.featureCase.reviewResult')"
@@ -424,6 +424,7 @@
     textDescription: '',
     expectedResult: '', // 预期结果
     description: '',
+    automationSteps: '',
     publicCase: false, // 是否公共用例
     moduleId: '',
     versionId: '',
