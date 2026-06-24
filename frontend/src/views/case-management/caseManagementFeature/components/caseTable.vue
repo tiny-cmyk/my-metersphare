@@ -807,6 +807,9 @@
       isTag: true,
       width: 300,
       showDrag: true,
+      filterConfig: {
+        mode: 'tags',
+      },
     },
     {
       title: 'caseManagement.featureCase.tableColumnUpdateUser',

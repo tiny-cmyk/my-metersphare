@@ -117,7 +117,9 @@
               <slot
                 v-else-if="
                   !props.notShowTableFilter &&
-                  ((item.filterConfig && item.filterConfig.options?.length) || item?.filterConfig?.remoteMethod)
+                  ((item.filterConfig && item.filterConfig.options?.length) ||
+                    item?.filterConfig?.remoteMethod ||
+                    item?.filterConfig?.mode === 'tags')
                 "
                 name="columnFilter"
                 :column="item"

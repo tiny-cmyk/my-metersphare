@@ -34,6 +34,9 @@
               </a-checkbox>
             </a-checkbox-group>
           </div>
+          <div v-if="props.mode === 'tags'" class="w-[220px] p-[12px] py-[8px]">
+            <MsTagsInput v-model:model-value="checkedList" :placeholder="t('common.pleaseInput')" />
+          </div>
           <div v-if="props.mode === 'remote'" class="w-[190px] p-[12px] py-[8px]">
             <a-input
               v-model:model-value="filterKeyword"
@@ -86,7 +89,7 @@
           <div
             :class="`${
               props.mode === 'static' ? 'justify-between' : 'justify-end'
-            } arco-table-filters-bottom flex h-[38px] items-center`"
+            } arco-table-filters-bottom flex h-[38px] items-center px-[12px]`"
           >
             <a-button size="mini" type="secondary" @click="handleFilterReset">
               {{ t('common.reset') }}
@@ -106,6 +109,7 @@
   import { debounce } from 'lodash-es';
 
   import MsList from '@/components/pure/ms-list/index.vue';
+  import MsTagsInput from '@/components/pure/ms-tags-input/index.vue';
 
   import { useI18n } from '@/hooks/useI18n';
 
@@ -123,7 +127,7 @@
       options?: FilterListItem[];
       valueKey?: string;
       labelKey?: string;
-      mode?: 'static' | 'remote';
+      mode?: 'static' | 'remote' | 'tags';
       remoteMethod?: FilterRemoteMethodsEnum; // 加载选项方法
       loadOptionParams?: Record<string, any>; // 请求下拉的参数
       dataIndex?: string | undefined;

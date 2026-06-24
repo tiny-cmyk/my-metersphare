@@ -261,6 +261,14 @@
                             <include refid="io.metersphere.system.mapper.BaseMapper.filterInWrapper"/>
                             )
                         </when>
+                        <!-- 标签 -->
+                        <when test="key=='tags'">
+                            and (
+                            <foreach collection="values" item="tag" separator=" OR ">
+                                JSON_CONTAINS(functional_case.tags, JSON_ARRAY(#{tag}))
+                            </foreach>
+                            )
+                        </when>
                         <!-- 更新人 -->
                         <when test="key=='updateUser'">
                             and functional_case.update_user in
