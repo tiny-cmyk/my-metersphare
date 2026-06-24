@@ -101,6 +101,8 @@ export default {
   'caseManagement.featureCase.expectedResult': 'Expected Result',
   'caseManagement.featureCase.remark': 'Remark',
   'caseManagement.featureCase.automationSteps': 'Automation Steps',
+  'caseManagement.featureCase.tagFilter': 'Tag Filter',
+  'caseManagement.featureCase.tagFilterPlaceholder': 'Enter tags and press Enter to filter',
   'caseManagement.featureCase.addAttachment': 'Add attachment',
   'caseManagement.featureCase.uploadFile': 'Upload File',
   'caseManagement.featureCase.storage': 'storage',

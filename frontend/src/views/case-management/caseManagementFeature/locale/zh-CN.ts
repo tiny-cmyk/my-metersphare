@@ -102,6 +102,8 @@ export default {
   'caseManagement.featureCase.expectedResult': '预期结果',
   'caseManagement.featureCase.remark': '备注',
   'caseManagement.featureCase.automationSteps': '自动化步骤',
+  'caseManagement.featureCase.tagFilter': '标签筛选',
+  'caseManagement.featureCase.tagFilterPlaceholder': '输入标签按回车筛选',
   'caseManagement.featureCase.addAttachment': '添加附件',
   'caseManagement.featureCase.uploadFile': '上传文件',
   'caseManagement.featureCase.storage': '转存',

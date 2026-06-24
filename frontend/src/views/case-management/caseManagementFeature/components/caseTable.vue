@@ -69,11 +69,24 @@
             </a-radio-group>
           </template>
         </MsAdvanceFilter>
+        <!-- 标签快速筛选 -->
+        <div class="mt-[8px] flex items-center gap-[8px]">
+          <span class="shrink-0 text-[13px] text-[var(--color-text-2)]"
+            >{{ t('caseManagement.featureCase.tagFilter') }}：</span
+          >
+          <MsTagsInput
+            v-model:model-value="quickFilterTags"
+            class="flex-1"
+            :allow-clear="true"
+            :placeholder="t('caseManagement.featureCase.tagFilterPlaceholder')"
+            @change="applyTagQuickFilter"
+          />
+        </div>
         <ms-base-table
           v-bind="propsRes"
           ref="tableRef"
           filter-icon-align-left
-          class="mt-[16px]"
+          class="mt-[8px]"
           :action-config="tableBatchActions"
           :not-show-table-filter="isAdvancedSearchMode"
           @selected-change="handleTableSelect"
@@ -494,6 +507,7 @@
   import useTable from '@/components/pure/ms-table/useTable';
   import MsTableMoreAction from '@/components/pure/ms-table-more-action/index.vue';
   import { ActionsItem } from '@/components/pure/ms-table-more-action/types';
+  import MsTagsInput from '@/components/pure/ms-tags-input/index.vue';
   import caseLevel from '@/components/business/ms-case-associate/caseLevel.vue';
   import ExecuteStatusTag from '@/components/business/ms-case-associate/executeResult.vue';
   import MsFeatureCaseMinder from '@/components/business/ms-minders/featureCaseMinder/index.vue';
@@ -1847,8 +1861,28 @@
       console.log(error);
     }
   }
+  // ===== 标签快速筛选 =====
+  const quickFilterTags = ref<string[]>([]);
+
+  async function applyTagQuickFilter() {
+    resetSelector();
+    keyword.value = '';
+    await getLoadListParams();
+    if (quickFilterTags.value.length > 0) {
+      setAdvanceFilter(
+        {
+          searchMode: 'AND',
+          conditions: [{ name: 'tags', operator: OperatorEnum.BELONG_TO, value: quickFilterTags.value }],
+        },
+        ''
+      );
+    }
+    loadList();
+  }
+
   // 高级检索
   const handleAdvSearch = async (filter: FilterResult, id: string) => {
+    quickFilterTags.value = []; // 清空标签快速筛选
     resetSelector();
     emit('setActiveFolder');
     keyword.value = '';
