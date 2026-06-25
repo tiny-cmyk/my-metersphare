@@ -80,16 +80,6 @@
           class="markdown-body !break-words break-all"
         ></div>
       </a-form-item>
-      <a-form-item field="description" :label="t('caseManagement.featureCase.remark')">
-        <MsRichText
-          v-if="isEditPreposition"
-          v-model:filed-ids="descriptionFileIds"
-          v-model:raw="detailForm.description"
-          :upload-image="handleUploadImage"
-          :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
-        />
-        <div v-else v-dompurify-html="detailForm.description || '-'" class="markdown-body !break-words break-all"></div>
-      </a-form-item>
       <a-form-item field="automationSteps" :label="t('caseManagement.featureCase.automationSteps')">
         <MsRichText
           v-if="isEditPreposition"
@@ -103,6 +93,16 @@
           v-dompurify-html="detailForm.automationSteps || '-'"
           class="markdown-body !break-words break-all"
         ></div>
+      </a-form-item>
+      <a-form-item field="description" :label="t('caseManagement.featureCase.remark')">
+        <MsRichText
+          v-if="isEditPreposition"
+          v-model:filed-ids="descriptionFileIds"
+          v-model:raw="detailForm.description"
+          :upload-image="handleUploadImage"
+          :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
+        />
+        <div v-else v-dompurify-html="detailForm.description || '-'" class="markdown-body !break-words break-all"></div>
       </a-form-item>
       <div v-if="isEditPreposition" class="flex justify-end">
         <a-button type="secondary" @click="handleCancel">{{ t('common.cancel') }}</a-button>

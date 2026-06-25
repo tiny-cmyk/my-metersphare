@@ -49,18 +49,18 @@
             :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
           />
         </a-form-item>
-        <a-form-item field="description" :label="t('caseManagement.featureCase.remark')">
-          <MsRichText
-            v-model:raw="form.description"
-            v-model:filed-ids="descriptionFileIds"
-            :upload-image="handleUploadImage"
-            :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
-          />
-        </a-form-item>
         <a-form-item field="automationSteps" :label="t('caseManagement.featureCase.automationSteps')">
           <MsRichText
             v-model:raw="form.automationSteps"
             v-model:filed-ids="automationStepsFileIds"
+            :upload-image="handleUploadImage"
+            :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
+          />
+        </a-form-item>
+        <a-form-item field="description" :label="t('caseManagement.featureCase.remark')">
+          <MsRichText
+            v-model:raw="form.description"
+            v-model:filed-ids="descriptionFileIds"
             :upload-image="handleUploadImage"
             :preview-url="`${PreviewEditorImageUrl}/${currentProjectId}`"
           />
