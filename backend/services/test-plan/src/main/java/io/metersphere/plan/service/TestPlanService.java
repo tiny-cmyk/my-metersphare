@@ -156,6 +156,8 @@ public class TestPlanService extends TestPlanBaseUtilsService {
                 reportFunctionCase.setFunctionCaseExecuteResult(result);
                 reportFunctionCase.setFunctionCaseExecuteReportId(null);
                 testPlanReportFunctionCaseMapper.updateByExampleSelective(reportFunctionCase, caseExample);
+                // 同步更新功能用例表的全局执行状态
+                testPlanFunctionalCaseService.batchUpdateFunctionalCaseLastExecResult(funcCaseIds, result);
             });
         }
     }

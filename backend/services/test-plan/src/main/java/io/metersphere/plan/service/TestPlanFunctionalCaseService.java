@@ -553,6 +553,27 @@ public class TestPlanFunctionalCaseService extends TestPlanResourceService {
         SqlSessionUtils.closeSqlSession(sqlSession, sqlSessionFactory);
     }
 
+    /**
+     * 批量更新功能用例表的执行状态（用于自动化执行结果同步）
+     *
+     * @param caseIds        功能用例ID列表
+     * @param lastExecResult 执行结果
+     */
+    public void batchUpdateFunctionalCaseLastExecResult(List<String> caseIds, String lastExecResult) {
+        if (CollectionUtils.isEmpty(caseIds)) {
+            return;
+        }
+        SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH);
+        FunctionalCaseMapper functionalCaseMapper = sqlSession.getMapper(FunctionalCaseMapper.class);
+        caseIds.forEach(id -> {
+            FunctionalCase functionalCase = new FunctionalCase();
+            functionalCase.setId(id);
+            functionalCase.setLastExecuteResult(lastExecResult);
+            functionalCaseMapper.updateByPrimaryKeySelective(functionalCase);
+        });
+        sqlSession.flushStatements();
+        SqlSessionUtils.closeSqlSession(sqlSession, sqlSessionFactory);
+    }
 
     private TestPlanCaseExecuteHistory buildHistory(TestPlanCaseRunRequest request, String operator) {
         TestPlanCaseExecuteHistory executeHistory = new TestPlanCaseExecuteHistory();
