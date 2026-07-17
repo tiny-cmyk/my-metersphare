@@ -1193,6 +1193,8 @@ public class FunctionalCaseService {
     public void saveImportData(List<FunctionalCaseExcelData> list, FunctionalCaseImportRequest request, List<BaseTreeNode> moduleTree, Map<String, TemplateCustomFieldDTO> customFieldsMap, Map<String, String> pathMap, SessionUser user, AtomicLong lastPos) {
         //默认模板
         TemplateDTO defaultTemplateDTO = projectTemplateService.getDefaultTemplateDTO(request.getProjectId(), TemplateScene.FUNCTIONAL.name());
+        //若指定了目标模块，将 Excel 中的模块路径前缀拼接到目标模块路径下
+        prependModulePath(list, request.getModuleId(), moduleTree);
         //模块路径
         List<String> modulePath = list.stream().map(FunctionalCaseExcelData::getModule).toList();
         //构建模块树
@@ -1407,6 +1409,8 @@ public class FunctionalCaseService {
     public void updateImportData(List<FunctionalCaseExcelData> updateList, FunctionalCaseImportRequest request, List<BaseTreeNode> moduleTree, Map<String, TemplateCustomFieldDTO> customFieldsMap, Map<String, String> pathMap, SessionUser user) {
         //默认模板
         TemplateDTO defaultTemplateDTO = projectTemplateService.getDefaultTemplateDTO(request.getProjectId(), TemplateScene.FUNCTIONAL.name());
+        //若指定了目标模块，将 Excel 中的模块路径前缀拼接到目标模块路径下
+        prependModulePath(updateList, request.getModuleId(), moduleTree);
         //模块路径
         List<String> modulePath = updateList.stream().map(FunctionalCaseExcelData::getModule).toList();
         //构建模块树
@@ -1600,5 +1604,51 @@ public class FunctionalCaseService {
 
     public List<OperationHistoryDTO> operationHistoryList(OperationHistoryRequest request) {
         return operationHistoryService.listWidthTable(request, CASE_TABLE);
+    }
+
+    /**
+     * 若请求指定了目标模块，将每行 Excel 的 module 路径拼接到目标模块路径下。
+     * 例：目标模块路径为 /A/B，Excel 行路径 /C/D → /A/B/C/D；路径为空时 → /A/B
+     */
+    private void prependModulePath(List<FunctionalCaseExcelData> list, String moduleId, List<BaseTreeNode> moduleTree) {
+        if (StringUtils.isBlank(moduleId) || StringUtils.equalsIgnoreCase(moduleId, ModuleConstants.ROOT_NODE_PARENT_ID)) {
+            return;
+        }
+        String parentPath = findNodePath(moduleTree, moduleId, "");
+        if (StringUtils.isBlank(parentPath)) {
+            return;
+        }
+        list.forEach(data -> {
+            String module = StringUtils.defaultString(data.getModule(), "");
+            if (!StringUtils.startsWith(module, "/")) {
+                module = "/" + module;
+            }
+            // 若 module 仅是 "/"，则直接放在目标模块下
+            if (StringUtils.equals(module, "/")) {
+                data.setModule(parentPath);
+            } else {
+                data.setModule(parentPath + module);
+            }
+        });
+    }
+
+    /**
+     * 在模块树中递归查找节点的完整路径（如 /A/B/C）。
+     */
+    private String findNodePath(List<BaseTreeNode> nodes, String targetId, String currentPath) {
+        if (CollectionUtils.isEmpty(nodes)) {
+            return null;
+        }
+        for (BaseTreeNode node : nodes) {
+            String path = currentPath + "/" + node.getName();
+            if (StringUtils.equals(node.getId(), targetId)) {
+                return path;
+            }
+            String found = findNodePath(node.getChildren(), targetId, path);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 }

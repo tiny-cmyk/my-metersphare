@@ -43,6 +43,10 @@
   import type { FileItem } from '@arco-design/web-vue';
   import Message from '@arco-design/web-vue/es/message';
 
+  const props = defineProps<{
+    moduleId?: string;
+  }>();
+
   const emit = defineEmits<{
     (e: 'confirmImport'): void;
     (e: 'initModules'): void;
@@ -111,6 +115,7 @@
         projectId: appStore.currentProjectId,
         versionId: '',
         cover,
+        moduleId: props.moduleId && props.moduleId !== 'all' ? props.moduleId : '',
       };
       const result = await importExcelOrXMindChecked(
         { request: params, fileList: files.map((item: any) => item.file) },
@@ -150,6 +155,7 @@
         versionId: '',
         cover: isCover.value,
         count: validateInfo.value.successCount,
+        moduleId: props.moduleId && props.moduleId !== 'all' ? props.moduleId : '',
       };
       await importExcelOrXMindCase(
         { request: params, fileList: fileList.value.map((item: any) => item.file) },

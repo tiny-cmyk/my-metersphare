@@ -32,7 +32,12 @@
               >
                 {{ t('common.newCreate') }}
               </a-button>
-              <ImportCase ref="importCaseRef" @init-modules="emit('initModules')" @confirm-import="confirmImport" />
+              <ImportCase
+                ref="importCaseRef"
+                :module-id="props.activeFolder"
+                @init-modules="emit('initModules')"
+                @confirm-import="confirmImport"
+              />
               <a-button v-permission="['FUNCTIONAL_CASE:READ+ADD']" class="ml-[12px]" @click="openNotionImport">
                 <template #icon><icon-import /></template>
                 {{ t('AI生成用例') }}
