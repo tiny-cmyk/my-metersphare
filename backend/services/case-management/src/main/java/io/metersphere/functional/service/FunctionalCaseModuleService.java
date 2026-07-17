@@ -26,6 +26,7 @@ import io.metersphere.sdk.util.Translator;
 import io.metersphere.system.domain.User;
 import io.metersphere.system.dto.sdk.BaseTreeNode;
 import io.metersphere.system.dto.sdk.request.NodeMoveRequest;
+import io.metersphere.sdk.util.LogUtils;
 import io.metersphere.system.log.constants.OperationLogType;
 import io.metersphere.system.mapper.UserMapper;
 import io.metersphere.system.notice.constants.NoticeConstants;
@@ -281,11 +282,14 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
         // 若指定了目标父模块，找到对应节点作为根，否则在项目顶层查找
         BaseTreeNode targetParentNode = null;
         List<BaseTreeNode> searchTree = moduleTree;
+        LogUtils.info("[ImportDebug] targetParentId={}, moduleTree size={}", targetParentId, moduleTree == null ? 0 : moduleTree.size());
         if (StringUtils.isNotBlank(targetParentId) && !StringUtils.equalsIgnoreCase(targetParentId, ModuleConstants.ROOT_NODE_PARENT_ID)) {
             targetParentNode = findNodeById(moduleTree, targetParentId);
+            LogUtils.info("[ImportDebug] findNodeById result={}", targetParentNode == null ? "null" : targetParentNode.getName());
             if (targetParentNode != null) {
                 List<BaseTreeNode> children = targetParentNode.getChildren();
                 searchTree = (children != null) ? children : Collections.emptyList();
+                LogUtils.info("[ImportDebug] searchTree size={}", searchTree.size());
             }
         }
         final BaseTreeNode finalTargetParent = targetParentNode;
