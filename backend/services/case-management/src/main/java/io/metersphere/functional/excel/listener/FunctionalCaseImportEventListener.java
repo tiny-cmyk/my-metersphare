@@ -503,6 +503,11 @@ public class FunctionalCaseImportEventListener extends AnalysisEventListener<Map
         if (!StringUtils.startsWith(data.getModule(), "/")) {
             data.setModule("/" + data.getModule());
         }
+        // 标准化：去掉每段路径两边的空格，使 pathMap 的 key 与 data.getModule() 一致
+        String normalized = Arrays.stream(data.getModule().split("/", -1))
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.joining("/"));
+        data.setModule(normalized);
         String module = data.getModule();
         if (StringUtils.isNotEmpty(module)) {
             String[] nodes = module.split("/");
