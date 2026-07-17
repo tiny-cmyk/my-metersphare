@@ -271,12 +271,26 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
     /**
      * 根据模块路径创建模块
      *
-     * @param modulePath 模块路径
-     * @param projectId  项目ID
-     * @param moduleTree 已存在的模块树
-     * @param userId     userId
+     * @param modulePath     模块路径
+     * @param projectId      项目ID
+     * @param moduleTree     已存在的模块树
+     * @param userId         userId
+     * @param targetParentId 目标父模块ID；非空时在该模块下查找/创建，为空则从项目根目录开始
      */
-    public Map<String, String> createCaseModule(List<String> modulePath, String projectId, List<BaseTreeNode> moduleTree, String userId, Map<String, String> pathMap) {
+    public Map<String, String> createCaseModule(List<String> modulePath, String projectId, List<BaseTreeNode> moduleTree, String userId, Map<String, String> pathMap, String targetParentId) {
+        // 若指定了目标父模块，找到对应节点作为根，否则在项目顶层查找
+        BaseTreeNode targetParentNode = null;
+        List<BaseTreeNode> searchTree = moduleTree;
+        if (StringUtils.isNotBlank(targetParentId) && !StringUtils.equalsIgnoreCase(targetParentId, ModuleConstants.ROOT_NODE_PARENT_ID)) {
+            targetParentNode = findNodeById(moduleTree, targetParentId);
+            if (targetParentNode != null) {
+                List<BaseTreeNode> children = targetParentNode.getChildren();
+                searchTree = (children != null) ? children : Collections.emptyList();
+            }
+        }
+        final BaseTreeNode finalTargetParent = targetParentNode;
+        final List<BaseTreeNode> finalSearchTree = searchTree;
+
         modulePath.forEach(path -> {
             List<String> moduleNames = new ArrayList<>(List.of(path.split("/")));
             Iterator<String> itemIterator = moduleNames.iterator();
@@ -289,7 +303,7 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
                 itemIterator.next();
                 itemIterator.remove();
                 currentModuleName = itemIterator.next().trim();
-                moduleTree.forEach(module -> {
+                finalSearchTree.forEach(module -> {
                     //根节点是否存在
                     if (StringUtils.equalsIgnoreCase(currentModuleName, module.getName())) {
                         hasNode.set(true);
@@ -299,11 +313,30 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
                 });
             }
             if (!hasNode.get()) {
-                //根节点不存在，直接创建
-                createModuleByPath(itemIterator, currentModuleName, null, projectId, StringUtils.EMPTY, pathMap, userId);
+                //根节点不存在，在目标父模块下创建（无目标父模块则在项目根创建）
+                createModuleByPath(itemIterator, currentModuleName, finalTargetParent, projectId, StringUtils.EMPTY, pathMap, userId);
             }
         });
         return pathMap;
+    }
+
+    /**
+     * 递归在模块树中按 ID 查找节点
+     */
+    private BaseTreeNode findNodeById(List<BaseTreeNode> nodes, String targetId) {
+        if (CollectionUtils.isEmpty(nodes)) {
+            return null;
+        }
+        for (BaseTreeNode node : nodes) {
+            if (StringUtils.equals(node.getId(), targetId)) {
+                return node;
+            }
+            BaseTreeNode found = findNodeById(node.getChildren(), targetId);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
 
