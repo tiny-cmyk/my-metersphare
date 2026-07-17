@@ -282,14 +282,14 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
         // 若指定了目标父模块，找到对应节点作为根，否则在项目顶层查找
         BaseTreeNode targetParentNode = null;
         List<BaseTreeNode> searchTree = moduleTree;
-        LogUtils.error("[ImportDebug] targetParentId={}, moduleTree size={}", targetParentId, moduleTree == null ? 0 : moduleTree.size());
+        LogUtils.error("[ImportDebug] targetParentId=" + targetParentId + ", moduleTree size=" + (moduleTree == null ? 0 : moduleTree.size()));
         if (StringUtils.isNotBlank(targetParentId) && !StringUtils.equalsIgnoreCase(targetParentId, ModuleConstants.ROOT_NODE_PARENT_ID)) {
             targetParentNode = findNodeById(moduleTree, targetParentId);
-            LogUtils.error("[ImportDebug] findNodeById result={}", targetParentNode == null ? "null" : targetParentNode.getName());
+            LogUtils.error("[ImportDebug] findNodeById result=" + (targetParentNode == null ? "null" : targetParentNode.getName()));
             if (targetParentNode != null) {
                 List<BaseTreeNode> children = targetParentNode.getChildren();
                 searchTree = (children != null) ? children : Collections.emptyList();
-                LogUtils.error("[ImportDebug] searchTree size={}", searchTree.size());
+                LogUtils.error("[ImportDebug] searchTree size=" + searchTree.size());
             }
         }
         final BaseTreeNode finalTargetParent = targetParentNode;

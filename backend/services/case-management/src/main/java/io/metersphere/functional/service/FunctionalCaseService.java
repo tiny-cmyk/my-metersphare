@@ -1195,10 +1195,10 @@ public class FunctionalCaseService {
         TemplateDTO defaultTemplateDTO = projectTemplateService.getDefaultTemplateDTO(request.getProjectId(), TemplateScene.FUNCTIONAL.name());
         //模块路径
         List<String> modulePath = list.stream().map(FunctionalCaseExcelData::getModule).toList();
-        LogUtils.error("[ImportDebug] saveImportData: moduleId={}, list size={}, first module={}", request.getModuleId(), list.size(), modulePath.isEmpty() ? "empty" : modulePath.get(0));
+        LogUtils.error("[ImportDebug] saveImportData: moduleId=" + request.getModuleId() + ", list size=" + list.size() + ", first module=" + (modulePath.isEmpty() ? "empty" : modulePath.get(0)));
         //构建模块树（若指定了目标模块，则在该目录下创建）
         Map<String, String> caseModulePathMap = functionalCaseModuleService.createCaseModule(modulePath, request.getProjectId(), moduleTree, user.getId(), pathMap, request.getModuleId());
-        LogUtils.error("[ImportDebug] pathMap size={}, keys={}", pathMap.size(), pathMap.keySet());
+        LogUtils.error("[ImportDebug] pathMap keys=" + pathMap.keySet());
 
         SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH);
         FunctionalCaseMapper caseMapper = sqlSession.getMapper(FunctionalCaseMapper.class);
@@ -1295,7 +1295,7 @@ public class FunctionalCaseService {
         functionalCase.setId(caseId);
         functionalCase.setNum(getNextNum(request.getProjectId()));
         String resolvedModuleId = caseModulePathMap.get(functionalCaseExcelData.getModule());
-        LogUtils.error("[ImportDebug] insert: module={}, resolvedModuleId={}", functionalCaseExcelData.getModule(), resolvedModuleId);
+        LogUtils.error("[ImportDebug] insert: module=" + functionalCaseExcelData.getModule() + ", resolvedModuleId=" + resolvedModuleId);
         if (resolvedModuleId == null && StringUtils.isNotBlank(request.getModuleId())) {
             resolvedModuleId = request.getModuleId();
         }
