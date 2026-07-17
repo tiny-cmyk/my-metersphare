@@ -1195,10 +1195,10 @@ public class FunctionalCaseService {
         TemplateDTO defaultTemplateDTO = projectTemplateService.getDefaultTemplateDTO(request.getProjectId(), TemplateScene.FUNCTIONAL.name());
         //模块路径
         List<String> modulePath = list.stream().map(FunctionalCaseExcelData::getModule).toList();
-        LogUtils.info("[ImportDebug] saveImportData: moduleId={}, list size={}, first module={}", request.getModuleId(), list.size(), modulePath.isEmpty() ? "empty" : modulePath.get(0));
+        LogUtils.error("[ImportDebug] saveImportData: moduleId={}, list size={}, first module={}", request.getModuleId(), list.size(), modulePath.isEmpty() ? "empty" : modulePath.get(0));
         //构建模块树（若指定了目标模块，则在该目录下创建）
         Map<String, String> caseModulePathMap = functionalCaseModuleService.createCaseModule(modulePath, request.getProjectId(), moduleTree, user.getId(), pathMap, request.getModuleId());
-        LogUtils.info("[ImportDebug] pathMap size={}, sample entry={}", pathMap.size(), pathMap.isEmpty() ? "empty" : pathMap.entrySet().iterator().next());
+        LogUtils.error("[ImportDebug] pathMap size={}, keys={}", pathMap.size(), pathMap.keySet());
 
         SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH);
         FunctionalCaseMapper caseMapper = sqlSession.getMapper(FunctionalCaseMapper.class);
@@ -1294,7 +1294,12 @@ public class FunctionalCaseService {
         String caseId = IDGenerator.nextStr();
         functionalCase.setId(caseId);
         functionalCase.setNum(getNextNum(request.getProjectId()));
-        functionalCase.setModuleId(caseModulePathMap.get(functionalCaseExcelData.getModule()));
+        String resolvedModuleId = caseModulePathMap.get(functionalCaseExcelData.getModule());
+        LogUtils.error("[ImportDebug] insert: module={}, resolvedModuleId={}", functionalCaseExcelData.getModule(), resolvedModuleId);
+        if (resolvedModuleId == null && StringUtils.isNotBlank(request.getModuleId())) {
+            resolvedModuleId = request.getModuleId();
+        }
+        functionalCase.setModuleId(resolvedModuleId);
         functionalCase.setProjectId(request.getProjectId());
         functionalCase.setTemplateId(defaultTemplateDTO.getId());
         functionalCase.setName(functionalCaseExcelData.getName().toString());
