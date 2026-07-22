@@ -1581,9 +1581,10 @@
   const minderIframeSrc = computed(() => {
     const projectKey = MINDMAP_PROJECT_MAP[appStore.currentProjectId] || '';
     const moduleId = props.activeFolder || '';
+    const modName = moduleNamePath.value || '';
     return `http://10.2.5.250:8088?project=${encodeURIComponent(projectKey)}&moduleId=${encodeURIComponent(
       moduleId
-    )}&embedded=1`;
+    )}&moduleName=${encodeURIComponent(modName)}&embedded=1`;
   });
   // 获取对应模块name
   function getModules(moduleIds: string) {
