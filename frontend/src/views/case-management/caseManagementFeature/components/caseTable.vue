@@ -282,14 +282,15 @@
           </div>
         </div>
         <div class="mt-[16px] h-[calc(100%-32px)] border-t border-[var(--color-text-n8)]">
-          <!-- 脑图开始 -->
-          <MsFeatureCaseMinder
+          <!-- 脑图开始（原组件保留，切换为 iframe 嵌入自定义脑图） -->
+          <!-- <MsFeatureCaseMinder
             v-if="props.moduleCountIsInit"
             :module-id="props.activeFolder"
             :modules-count="modulesCount"
             :module-name="props.moduleName"
             @save="handleMinderSave"
-          />
+          /> -->
+          <iframe :src="minderIframeSrc" width="100%" height="100%" frameborder="0" style="border: none" />
           <MsDrawer v-model:visible="visible" :width="480" :mask="false">
             {{ nodeData.text }}
           </MsDrawer>
@@ -1568,6 +1569,21 @@
     return props.activeFolder === 'all'
       ? t('caseManagement.featureCase.allCase')
       : findNodeByKey<Record<string, any>>(caseTreeData.value, props.activeFolder, 'id')?.name;
+  });
+
+  // ===== 自定义脑图 iframe =====
+  const MINDMAP_PROJECT_MAP: Record<string, string> = {
+    '1465684991651422208': 'global-web',
+    '1465686383220826112': 'global-app',
+    '1470186838932258816': 'CN-web',
+    '1470187027910819840': 'CN-app',
+  };
+  const minderIframeSrc = computed(() => {
+    const projectKey = MINDMAP_PROJECT_MAP[appStore.currentProjectId] || '';
+    const moduleId = props.activeFolder || '';
+    return `http://10.2.5.250:8088?project=${encodeURIComponent(projectKey)}&moduleId=${encodeURIComponent(
+      moduleId
+    )}&embedded=1`;
   });
   // 获取对应模块name
   function getModules(moduleIds: string) {

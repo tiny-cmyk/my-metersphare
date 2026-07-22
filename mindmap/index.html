@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<!--
+  MeterSphere 用例脑图查看器
+  启动方式：python scripts/mindmap_server.py --open
+  单文件：所有 CSS 和 JS 均内联，无外部依赖
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeterSphere 脑图</title>
+<style>
+/* ── Reset & 基础 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #F5F6FA; color: #262626; user-select: none; }
+
+/* ── 布局骨架 ── */
+#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ── Header ── */
+#header {
+  height: 56px; min-height: 56px;
+  background: #fff;
+  border-bottom: 1px solid #E8E8E8;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+#header .logo { font-size: 15px; font-weight: 600; color: #1d1d1f; white-space: nowrap; }
+#header .spacer { flex: 1; }
+#btn-toggle-sidebar {
+  width: 32px; height: 32px; border-radius: 6px;
+  border: none; background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #595959;
+  transition: background 0.15s;
+}
+#btn-toggle-sidebar:hover { background: #F0F0F0; }
+
+/* 项目选择器 */
+#project-select {
+  height: 32px; padding: 0 10px;
+  border: 1px solid #D9D9D9; border-radius: 6px;
+  background: #fff; font-size: 13px; color: #262626;
+  cursor: pointer; outline: none;
+  transition: border-color 0.15s;
+}
+#project-select:focus { border-color: #4096FF; }
+
+/* Header 按钮 */
+.hbtn {
+  height: 32px; padding: 0 14px;
+  border-radius: 6px; border: 1px solid #D9D9D9;
+  background: #fff; font-size: 13px; color: #262626;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.hbtn:hover { border-color: #4096FF; color: #4096FF; }
+.hbtn.primary { background: #4096FF; border-color: #4096FF; color: #fff; }
+.hbtn.primary:hover { background: #1677FF; border-color: #1677FF; }
+
+/* ── 内容区 ── */
+#content { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar ── */
+#sidebar {
+  width: 260px; min-width: 260px;
+  background: #fff;
+  border-right: 1px solid #E8E8E8;
+  display: flex; flex-direction: column;
+  transition: width 0.25s ease, min-width 0.25s ease;
+  overflow: hidden;
+}
+#sidebar.collapsed { width: 0; min-width: 0; border-right: none; }
+
+#sidebar-inner { width: 260px; display: flex; flex-direction: column; height: 100%; }
+
+#sidebar-header {
+  padding: 12px 14px 8px;
+  font-size: 12px; font-weight: 600; color: #8C8C8C;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  border-bottom: 1px solid #F0F0F0;
+  white-space: nowrap;
+}
+
+#module-tree {
+  flex: 1; overflow-y: auto; padding: 6px 0;
+}
+#module-tree::-webkit-scrollbar { width: 4px; }
+#module-tree::-webkit-scrollbar-thumb { background: #D9D9D9; border-radius: 2px; }
+
+/* 模块树节点 */
+.tree-node { }
+.tree-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  cursor: pointer; font-size: 13px; color: #262626;
+  border-radius: 0;
+  transition: background 0.12s;
+  white-space: nowrap; overflow: hidden;
+}
+.tree-item:hover { background: #F5F6FA; }
+.tree-item.active { background: #E6F4FF; color: #1677FF; font-weight: 500; }
+.tree-item .toggle {
+  font-size: 10px; color: #BFBFBF;
+  width: 14px; text-align: center; flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.tree-item.expanded .toggle { transform: rotate(90deg); }
+.tree-item .node-name {
+  flex: 1; overflow: hidden; text-overflow: ellipsis;
+}
+.tree-children { display: none; }
+.tree-children.open { display: block; }
+
+/* 空状态 */
+.empty-tip { padding: 24px 14px; font-size: 13px; color: #BFBFBF; text-align: center; }
+
+/* ── 主画布区 ── */
+#main {
+  flex: 1; overflow: hidden; position: relative;
+  background: #F5F6FA;
+}
+
+/* 加载 spinner */
+#loading {
+  display: none; position: absolute; inset: 0;
+  background: rgba(245,246,250,0.8);
+  z-index: 50; align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px;
+}
+#loading.show { display: flex; }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #E0E0E0;
+  border-top-color: #4096FF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-text { font-size: 13px; color: #8C8C8C; }
+
+/* 错误提示 */
+#error-panel {
+  display: none; position: absolute; inset: 0;
+  background: rgba(245,246,250,0.9);
+  z-index: 50; align-items: center; justify-content: center;
+}
+#error-panel.show { display: flex; }
+#error-box {
+  background: #fff; border: 1px solid #FFB3B3;
+  border-radius: 10px; padding: 24px 32px;
+  text-align: center; max-width: 400px;
+}
+#error-box .err-icon { font-size: 32px; margin-bottom: 12px; }
+#error-box .err-msg { font-size: 14px; color: #FF4D4F; margin-bottom: 16px; }
+#btn-retry {
+  padding: 6px 20px; border-radius: 6px;
+  background: #FF4D4F; border: none; color: #fff;
+  font-size: 13px; cursor: pointer;
+}
+#btn-retry:hover { background: #CF1322; }
+
+/* 空画布提示 */
+#canvas-placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px;
+  color: #BFBFBF; font-size: 14px; pointer-events: none;
+}
+#canvas-placeholder .ph-icon { font-size: 48px; }
+
+/* 画布容器（可滚动） */
+#canvas-scroll {
+  width: 100%; height: 100%;
+  overflow: auto; cursor: grab;
+}
+#canvas-scroll.grabbing { cursor: grabbing; }
+#canvas-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+#canvas-scroll::-webkit-scrollbar-thumb { background: #D9D9D9; border-radius: 3px; }
+
+/* SVG 画布 */
+#mindmap-svg {
+  display: block;
+  transform-origin: 0 0;
+  transition: transform 0.1s;
+}
+
+/* ── 节点样式 ── */
+/* 用例根节点 */
+.node-case-rect {
+  fill: #fff;
+  stroke: #4096FF;
+  stroke-width: 2;
+  rx: 8;
+}
+/* 优先级徽章（圆形） */
+.badge-p0 { fill: #FF4D4F; }
+.badge-p1 { fill: #FA8C16; }
+.badge-p2 { fill: #1890FF; }
+.badge-p3 { fill: #8C8C8C; }
+.badge-text { fill: #fff; font-size: 11px; font-weight: 700; }
+
+/* 其他节点背景（hover 高亮） */
+.node-bg { fill: transparent; }
+.node-bg:hover { fill: rgba(64,150,255,0.06); }
+
+/* 文字 */
+.node-text {
+  font-size: 13px; fill: #262626;
+  dominant-baseline: middle;
+}
+.node-text-case { font-size: 13px; fill: #262626; font-weight: 500; }
+
+/* 内联 badge（文字后面的彩色标签） */
+/* 用 foreignObject 或纯 SVG rect+text */
+
+/* 连接线 */
+.conn-line {
+  stroke: #4096FF;
+  stroke-width: 1.5;
+  fill: none;
+  opacity: 0.5;
+}
+
+/* Tooltip */
+#tooltip {
+  position: fixed; z-index: 9999;
+  background: rgba(0,0,0,0.82); color: #fff;
+  font-size: 12px; line-height: 1.5;
+  padding: 6px 10px; border-radius: 6px;
+  max-width: 320px; word-break: break-all;
+  pointer-events: none;
+  display: none;
+}
+
+/* 全屏按钮激活态 */
+.hbtn.fullscreen-active { background: #E6F4FF; border-color: #4096FF; color: #4096FF; }
+
+/* 缩放提示 */
+#zoom-hint {
+  position: absolute; bottom: 12px; right: 12px;
+  background: rgba(0,0,0,0.5); color: #fff;
+  font-size: 12px; padding: 4px 10px; border-radius: 20px;
+  pointer-events: none; opacity: 0;
+  transition: opacity 0.3s;
+}
+#zoom-hint.show { opacity: 1; }
+
+/* ── 嵌入模式（embedded=1）── */
+body.embedded #header { display: none; }
+body.embedded #btn-toggle-sidebar { display: none; }
+
+/* 自动刷新指示器 */
+#refresh-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #52C41A; display: inline-block;
+  margin-right: 4px; opacity: 0;
+  transition: opacity 0.3s;
+}
+#refresh-dot.pulse { animation: pulse-dot 1s ease; }
+@keyframes pulse-dot {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 折叠按钮：默认隐藏，hover 用例节点时显示 */
+.collapse-btn { opacity: 0; transition: opacity 0.15s; }
+.collapse-btn.expanded { opacity: 1; }   /* 已折叠状态常显 */
+.collapse-btn circle { transition: fill 0.15s; }
+
+/* 选中节点高亮 */
+.node-selected > rect[data-hover] {
+  fill: rgba(64,150,255,0.08) !important;
+  stroke: #4096FF !important;
+  stroke-width: 1.5 !important;
+}
+
+/* 节点右侧 ＋ 按钮（选中后才显示） */
+.node-add-btn { display: none; cursor: pointer; }
+.node-selected ~ .node-add-btn,
+.node-add-btn.visible { display: inline; }
+
+/* 内联编辑框 */
+.inline-editor {
+  box-shadow: 0 2px 12px rgba(64,150,255,0.25);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Header -->
+  <div id="header">
+    <button id="btn-toggle-sidebar" title="展开/收起侧栏">◀</button>
+    <div class="logo">🗺 MeterSphere 脑图</div>
+    <select id="project-select">
+      <option value="">加载中…</option>
+    </select>
+    <button class="hbtn" id="btn-refresh" title="刷新当前模块用例">
+      ↻ 刷新
+    </button>
+    <button class="hbtn" id="btn-fullscreen" title="全屏展示脑图">
+      ⛶ 全屏
+    </button>
+    <div class="spacer"></div>
+    <span id="refresh-dot"></span>
+    <span id="case-count" style="font-size:12px;color:#8C8C8C;"></span>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div id="sidebar-inner">
+        <div id="sidebar-header">模块树</div>
+        <div id="module-tree">
+          <div class="empty-tip">请选择项目</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div id="main">
+      <!-- 加载中 -->
+      <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">加载中…</div>
+      </div>
+
+      <!-- 错误面板 -->
+      <div id="error-panel">
+        <div id="error-box">
+          <div class="err-icon">⚠️</div>
+          <div class="err-msg" id="error-msg">请求失败</div>
+          <button id="btn-retry">重试</button>
+        </div>
+      </div>
+
+      <!-- 空提示 -->
+      <div id="canvas-placeholder">
+        <div class="ph-icon">🌿</div>
+        <div>请在左侧选择一个模块</div>
+      </div>
+
+      <!-- 可滚动画布 -->
+      <div id="canvas-scroll" style="display:none;">
+        <svg id="mindmap-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+
+      <!-- 缩放提示 -->
+      <div id="zoom-hint">100%</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   常量
+════════════════════════════════════════════════════════ */
+const API_BASE = '';  // 同域代理，不需要前缀
+
+// 布局常量（px）
+const PADDING    = 40;   // 画布外边距
+const ROW_HEIGHT = 56;   // 每步骤占用行高
+const CASE_GAP   = 48;   // 用例间垂直间距
+const NODE_H     = 36;   // 节点高度
+const BADGE_H    = 20;   // badge 高度
+const BADGE_PAD  = 8;    // badge 水平内边距
+const PRI_R      = 10;   // 优先级徽章半径
+
+// 新列宽常量（替换旧 COL_WIDTHS / COL_X）
+const MODULE_W  = 130;
+const CASE_W    = 220;
+const PREREQ_W  = 200;
+const STEP_W    = 240;
+const RESULT_W  = 240;
+const H_GAP     = 60;   // 列间距
+
+const X_MODULE = PADDING;
+const X_CASE   = X_MODULE + MODULE_W + H_GAP;
+const X_PREREQ = X_CASE   + CASE_W   + H_GAP;
+const X_STEP   = X_PREREQ + PREREQ_W + H_GAP;
+const X_RESULT = X_STEP   + STEP_W   + H_GAP;
+
+// 兼容旧代码使用的 COL_WIDTHS / COL_X（保留引用不报错）
+const COL_WIDTHS = [CASE_W, PREREQ_W, STEP_W, RESULT_W];
+const COL_GAPS   = [H_GAP, H_GAP, H_GAP];
+const COL_X = [X_CASE, X_PREREQ, X_STEP, X_RESULT];
+
+// badge 配置（颜色仿飞书风格）
+const BADGE_STYLES = {
+  case:    { bg: '#E6FFFB', color: '#006D75', border: '#87E8DE', label: '用例' },
+  prereq:  { bg: '#FCFFE6', color: '#7CB305', border: '#D3F261', label: '前置条件' },
+  step:    { bg: '#E6F4FF', color: '#0958D9', border: '#91CAFF', label: '步骤描述' },
+  result:  { bg: '#F9F0FF', color: '#531DAB', border: '#D3ADF7', label: '预期结果' },
+};
+
+// 项目名 → projectId 映射（与后端 PROJECT_MAP 一致，用于创建用例）
+const PROJECT_MAP_JS = {
+  'global-web': '1465684991651422208',
+  'global-app': '1465686383220826112',
+  'CN-web':     '1470186838932258816',
+  'CN-app':     '1470187027910819840',
+};
+
+// 优先级徽章颜色
+const PRI_COLORS = {
+  P0: '#FF4D4F', P1: '#FA8C16', P2: '#1890FF', P3: '#8C8C8C',
+};
+
+/* ════════════════════════════════════════════════════════
+   状态
+════════════════════════════════════════════════════════ */
+let currentProject = '';
+let currentModuleId = '';
+let currentModuleName = '';   // 当前模块名，用于脑图根节点
+let currentCases = [];
+let scale = 1.0;
+let autoRefreshTimer = null;
+let lastRetryAction = null;  // 用于"重试"按钮
+
+/* ════════════════════════════════════════════════════════
+   DOM 引用
+════════════════════════════════════════════════════════ */
+const $sidebar        = document.getElementById('sidebar');
+const $toggleBtn      = document.getElementById('btn-toggle-sidebar');
+const $projectSelect  = document.getElementById('project-select');
+const $moduleTree     = document.getElementById('module-tree');
+const $loading        = document.getElementById('loading');
+const $loadingText    = document.getElementById('loading-text');
+const $errorPanel     = document.getElementById('error-panel');
+const $errorMsg       = document.getElementById('error-msg');
+const $btnRetry       = document.getElementById('btn-retry');
+const $placeholder    = document.getElementById('canvas-placeholder');
+const $canvasScroll   = document.getElementById('canvas-scroll');
+const $svg            = document.getElementById('mindmap-svg');
+const $btnRefresh     = document.getElementById('btn-refresh');
+const $btnFullscreen  = document.getElementById('btn-fullscreen');
+const $zoomHint       = document.getElementById('zoom-hint');
+const $tooltip        = document.getElementById('tooltip');
+const $caseCount      = document.getElementById('case-count');
+const $refreshDot     = document.getElementById('refresh-dot');
+
+/* ════════════════════════════════════════════════════════
+   工具函数
+════════════════════════════════════════════════════════ */
+
+/** 截断文字（SVG 不原生支持 ellipsis，手动截断） */
+function truncate(text, maxChars) {
+  if (!text) return '';
+  const s = String(text);
+  return s.length > maxChars ? s.slice(0, maxChars - 1) + '…' : s;
+}
+
+/**
+ * 按像素宽度截断文字（每汉字约 13px，ASCII 约 7px）
+ * @param {string} text       - 原始文字
+ * @param {number} maxPixels  - 可用像素宽度
+ * @returns {string}          - 截断后文字（超出加 …）
+ */
+function truncateByPixel(text, maxPixels) {
+  if (!text) return '';
+  const s = String(text);
+  let width = 0;
+  for (let i = 0; i < s.length; i++) {
+    const charW = s.charCodeAt(i) > 127 ? 13 : 7;
+    if (width + charW > maxPixels) {
+      return s.slice(0, i) + '…';
+    }
+    width += charW;
+  }
+  return s;
+}
+
+/** 解析 steps 字段（JSON 字符串 → 数组） */
+function parseSteps(raw) {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(arr)
+      ? arr.sort((a, b) => (a.num || 0) - (b.num || 0))
+      : [];
+  } catch { return []; }
+}
+
+/** 提取优先级（多种格式兼容） */
+function getPriority(c) {
+  // 1. detail 接口返回的 functionalPriority 字段（最准确）
+  if (c.functionalPriority) return String(c.functionalPriority).toUpperCase();
+  // 2. 直接 priority 字段
+  if (c.priority) return String(c.priority).toUpperCase();
+  // 3. customFields 中找 Case Priority / functional_priority
+  const cf = (c.customFields || []).find(f =>
+    f.internalFieldKey === 'functional_priority' ||
+    (f.fieldName || '').toLowerCase().includes('priority') ||
+    (f.fieldName || '').includes('等级')
+  );
+  if (cf) {
+    const val = cf.value || cf.defaultValue;
+    if (val) return String(val).toUpperCase();
+  }
+  // 4. 从名称解析 [P0] 或 P0:
+  const m = (c.name || '').match(/\bP([0-3])\b/i);
+  return m ? `P${m[1]}` : '';
+}
+
+/** 显示/隐藏 loading */
+function showLoading(text = '加载中…') {
+  $loadingText.textContent = text;
+  $loading.classList.add('show');
+  $errorPanel.classList.remove('show');
+  $placeholder.style.display = 'none';
+}
+function hideLoading() { $loading.classList.remove('show'); }
+
+/** 显示错误 */
+function showError(msg, retryFn) {
+  $errorMsg.textContent = msg;
+  $errorPanel.classList.add('show');
+  $loading.classList.remove('show');
+  lastRetryAction = retryFn;
+}
+function hideError() { $errorPanel.classList.remove('show'); }
+
+/** 带 JSON 错误提示的 fetch */
+async function apiFetch(url, options = {}) {
+  const resp = await fetch(API_BASE + url, options);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
+  }
+  return resp.json();
+}
+
+/** 缩放提示（短暂显示后消失） */
+let zoomHintTimer = null;
+function showZoomHint(pct) {
+  $zoomHint.textContent = `${Math.round(pct)}%`;
+  $zoomHint.classList.add('show');
+  clearTimeout(zoomHintTimer);
+  zoomHintTimer = setTimeout(() => $zoomHint.classList.remove('show'), 1200);
+}
+
+/* ════════════════════════════════════════════════════════
+   SVG 辅助函数
+════════════════════════════════════════════════════════ */
+
+/** 创建带命名空间的 SVG 元素 */
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+/**
+ * 绘制节点：矩形背景 + 文字 + 右侧 badge
+ * @param {SVGElement} parent  - 父元素（g 或 svg）
+ * @param {number}     x, y   - 节点左上角坐标（y 为中线）
+ * @param {number}     w      - 节点宽度
+ * @param {string}     text   - 显示文字
+ * @param {string}     type   - 'case' | 'prereq' | 'step' | 'result'
+ * @param {string}     fullText - 完整文字（tooltip 用）
+ * @param {string}     priority - 优先级（仅 case 用）
+ * @returns {{ top, bottom, right, left, cy }} 节点锚点坐标
+ */
+function drawNode(parent, x, y, w, text, type, fullText, priority) {
+  const cy = y;  // 垂直中心
+  const top    = cy - NODE_H / 2;
+  const bottom = cy + NODE_H / 2;
+
+  const g = svgEl('g');
+
+  if (type === 'case') {
+    // 用例根节点：白色圆角矩形 + 蓝色边框
+    const rect = svgEl('rect', {
+      x, y: top, width: w, height: NODE_H,
+      rx: 8, fill: '#fff',
+      stroke: '#4096FF', 'stroke-width': 2,
+    });
+    g.appendChild(rect);
+
+    // 优先级徽章（左侧，小圆形）
+    let textX = x + 12;
+    if (priority && PRI_COLORS[priority]) {
+      const priColor = PRI_COLORS[priority];
+      const cx_p = x + 10 + PRI_R;
+      const cy_p = cy;
+      const circle = svgEl('circle', { cx: cx_p, cy: cy_p, r: PRI_R, fill: priColor });
+      const priTxt = svgEl('text', {
+        x: cx_p, y: cy_p,
+        'text-anchor': 'middle',
+        'dominant-baseline': 'middle',
+        'font-size': 10, 'font-weight': 700, fill: '#fff',
+        'pointer-events': 'none',
+      });
+      priTxt.textContent = priority;
+      g.appendChild(circle);
+      g.appendChild(priTxt);
+      textX = x + 10 + PRI_R * 2 + 8;
+    }
+
+    // 用例名文字（按像素截断）
+    // 右侧留 8px 内边距 + 22px 折叠按钮空间
+    const textMaxPx = w - (textX - x) - 8 - 22;
+    const label = truncateByPixel(text, Math.max(textMaxPx, 40));
+    const txt = svgEl('text', {
+      x: textX, y: cy,
+      'dominant-baseline': 'middle',
+      'font-size': 13, 'font-weight': 500, fill: '#262626',
+      'pointer-events': 'none',
+    });
+    txt.textContent = label;
+    g.appendChild(txt);
+
+  } else {
+    // 其他节点（prereq/step/result）：badge 在左侧 + 文字在右侧
+    const bs = BADGE_STYLES[type];
+    const badgeLabel = bs.label;
+
+    // 估算 badge 宽度
+    const badgeW = badgeLabel.length * 13 + BADGE_PAD * 2;
+    const badgeGap = 8;  // badge 与文字的间距
+
+    // 可用文字像素宽度（badge + gap + 文字 + 右内边距 8）
+    const textMaxPx = w - badgeW - badgeGap - 12;
+    const label = truncateByPixel(text, Math.max(textMaxPx, 30));
+
+    // hover 背景（pointer-events:all 确保透明区域也能接收点击/双击）
+    const bg = svgEl('rect', {
+      x, y: top, width: w, height: NODE_H,
+      rx: 4, fill: 'transparent', 'data-hover': '1',
+      'pointer-events': 'all',
+    });
+    bg.addEventListener('mouseenter', () => { bg.setAttribute('fill', 'rgba(64,150,255,0.06)'); });
+    bg.addEventListener('mouseleave', () => { bg.setAttribute('fill', 'transparent'); });
+    g.appendChild(bg);
+
+    // badge（左侧）
+    const bx = x + 4;
+    const by = cy - BADGE_H / 2;
+    const bRect = svgEl('rect', {
+      x: bx, y: by, width: badgeW, height: BADGE_H,
+      rx: BADGE_H / 2,
+      fill: bs.bg, stroke: bs.border, 'stroke-width': 1,
+    });
+    const bTxt = svgEl('text', {
+      x: bx + badgeW / 2, y: cy,
+      'text-anchor': 'middle', 'dominant-baseline': 'middle',
+      'font-size': 11, fill: bs.color, 'font-weight': 500,
+      'pointer-events': 'none',
+    });
+    bTxt.textContent = badgeLabel;
+    g.appendChild(bRect);
+    g.appendChild(bTxt);
+
+    // 文字（badge 右侧）
+    const textX = bx + badgeW + badgeGap;
+    const txt = svgEl('text', {
+      x: textX, y: cy,
+      'dominant-baseline': 'middle',
+      'font-size': 13, fill: '#262626',
+      'pointer-events': 'none',
+    });
+    txt.textContent = label;
+    g.appendChild(txt);
+  }
+
+  // Tooltip（鼠标悬浮时显示完整文字）
+  if (fullText) {
+    g.addEventListener('mouseenter', (e) => showTooltip(e, fullText));
+    g.addEventListener('mousemove',  (e) => moveTooltip(e));
+    g.addEventListener('mouseleave', hideTooltip);
+  }
+
+  parent.appendChild(g);
+  return { top, bottom, left: x, right: x + w, cy };
+}
+
+/**
+ * 绘制 Bezier 连接线（从源右边中心 → 目标左边中心）
+ */
+function drawConnector(parent, sx, sy, tx, ty) {
+  const mx = (sx + tx) / 2;
+  const d  = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
+  const path = svgEl('path', {
+    d, stroke: '#4096FF', 'stroke-width': 1.5,
+    fill: 'none', opacity: 0.5,
+  });
+  parent.appendChild(path);
+}
+
+/* ════════════════════════════════════════════════════════
+   脑图渲染
+════════════════════════════════════════════════════════ */
+
+/**
+ * 计算每个用例在 SVG 中占用的行数（步骤数 vs 1）
+ * 同时返回 steps 数组和 prereq 文字
+ */
+function calcCaseRows(c) {
+  const steps = parseSteps(c.steps);
+  if (steps.length === 0) return 1;
+  let total = 0;
+  steps.forEach(s => {
+    const rt = s.result || s.expected || '';
+    const lines = rt ? rt.split('\n').filter(l => l.trim()) : [];
+    total += Math.max(1, lines.length);
+  });
+  return Math.max(total, 1);
+}
+
+/**
+ * 绘制模块根节点（最左侧，垂直居中于所有用例）
+ * @param {SVGElement} parent   - 父节点层
+ * @param {string}     name     - 模块名
+ * @param {number}     cy       - 垂直中心 Y
+ * @returns {{ right, cy }}     - 右侧锚点
+ */
+function drawModuleNode(parent, name, cy) {
+  const x   = X_MODULE;
+  const top = cy - 20;
+  const g   = svgEl('g');
+
+  const rect = svgEl('rect', {
+    x, y: top, width: MODULE_W, height: 40,
+    rx: 8, fill: '#F0F5FF',
+    stroke: '#4096FF', 'stroke-width': 2,
+  });
+  g.appendChild(rect);
+
+  // 截断模块名（模块宽 130px，左右各留 8px 内边距）
+  const label = truncateByPixel(name || '模块', MODULE_W - 16);
+  const txt = svgEl('text', {
+    x: x + MODULE_W / 2, y: cy,
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle',
+    'font-size': 14, 'font-weight': 700, fill: '#1677FF',
+    'pointer-events': 'none',
+  });
+  txt.textContent = label;
+  g.appendChild(txt);
+
+  if (name) {
+    g.addEventListener('mouseenter', (e) => showTooltip(e, name));
+    g.addEventListener('mousemove',  (e) => moveTooltip(e));
+    g.addEventListener('mouseleave', hideTooltip);
+  }
+
+  parent.appendChild(g);
+  return { right: x + MODULE_W, cy };
+}
+
+/**
+ * 渲染整个脑图
+ * @param {Array}  cases      - 用例数组
+ * @param {string} moduleName - 模块名（用于根节点）
+ */
+function renderMindmap(cases, moduleName, resetScale = true) {
+  // 清空 SVG、旧编辑框和选中状态
+  clearSelection();
+  while ($svg.firstChild) $svg.removeChild($svg.firstChild);
+  document.querySelectorAll('.inline-editor').forEach(el => el.remove());
+
+  if (!cases || cases.length === 0) {
+    $canvasScroll.style.display = 'none';
+    $placeholder.style.display = '';
+    $placeholder.querySelector('div:last-child').textContent = '该模块暂无用例';
+    $caseCount.textContent = '';
+    return;
+  }
+
+  $canvasScroll.style.display = '';
+  $placeholder.style.display = 'none';
+  $caseCount.textContent = `共 ${cases.length} 条`;
+
+  // 计算总高度
+  let totalRows = 0;
+  cases.forEach(c => { totalRows += calcCaseRows(c); });
+
+  const svgW = X_RESULT + RESULT_W + PADDING;
+  const svgH = PADDING * 2 + totalRows * ROW_HEIGHT + (cases.length - 1) * CASE_GAP + ROW_HEIGHT;
+
+  $svg.setAttribute('width', svgW);
+  $svg.setAttribute('height', svgH);
+  $svg.style.width  = svgW + 'px';
+  $svg.style.height = svgH + 'px';
+
+  // 连接线层（先绘制，在节点下面）
+  const lineLayer = svgEl('g', { id: 'lines' });
+  $svg.appendChild(lineLayer);
+
+  // 节点层
+  const nodeLayer = svgEl('g', { id: 'nodes' });
+  $svg.appendChild(nodeLayer);
+
+  // 模块根节点（垂直居中于所有用例）
+  const totalH = totalRows * ROW_HEIGHT + (cases.length - 1) * CASE_GAP;
+  const moduleRootCY = PADDING + NODE_H / 2 + (totalH - ROW_HEIGHT) / 2;
+  const moduleAnchors = drawModuleNode(nodeLayer, moduleName || '模块', moduleRootCY);
+
+  let curY = PADDING + NODE_H / 2;  // 当前垂直中心
+
+  cases.forEach((c, ci) => {
+    const steps  = parseSteps(c.steps);
+    const prereq = c.prerequisite || '';
+    const rows   = calcCaseRows(c);
+    const pri    = getPriority(c);
+
+    // 用例节点垂直居中于所有步骤行
+    const blockH = rows * ROW_HEIGHT;
+    const caseCY = curY + (blockH - ROW_HEIGHT) / 2;
+
+    // ── 用例节点（X_CASE 列）──
+    const caseG = svgEl('g', { 'data-case-id': c.id || '' });
+
+    // 先把 caseG 加入 nodeLayer，再调用 drawNode 内部绘制
+    // 这里我们直接手动绘制到 caseG 而不用 drawNode（保持灵活）
+    const caseCoreAnchors = drawNode(
+      caseG, X_CASE, caseCY, CASE_W,
+      c.name || '未命名用例', 'case', c.name, pri
+    );
+    // 用例节点可选中，+ → 新增步骤
+    bindSelectable(caseG, c, 'case', -1, caseCoreAnchors);
+
+    // 折叠按钮（右侧 +/- 圆形）
+    const collapseR  = 8;
+    const collapseX  = X_CASE + CASE_W + 14;
+    const collapseY  = caseCY;
+    const collapseBtn = svgEl('g', { class: 'collapse-btn', style: 'cursor:pointer' });
+    // 透明热区：从用例右边缘延伸到折叠按钮，确保 hover 不断开
+    const hitArea = svgEl('rect', {
+      x: X_CASE + CASE_W - 4, y: collapseY - collapseR - 4,
+      width: collapseX - X_CASE - CASE_W + collapseR + 8,
+      height: collapseR * 2 + 8,
+      fill: 'transparent', 'pointer-events': 'all',
+    });
+    collapseBtn.appendChild(hitArea);
+    const collapseBg = svgEl('circle', {
+      cx: collapseX, cy: collapseY, r: collapseR,
+      fill: '#fff', stroke: '#4096FF', 'stroke-width': 1.5,
+    });
+    const collapseTxt = svgEl('text', {
+      x: collapseX, y: collapseY,
+      'text-anchor': 'middle', 'dominant-baseline': 'middle',
+      'font-size': 14, fill: '#4096FF', 'font-weight': 700,
+      'pointer-events': 'none',
+    });
+    collapseTxt.textContent = '−';
+    collapseBtn.appendChild(collapseBg);
+    collapseBtn.appendChild(collapseTxt);
+    caseG.appendChild(collapseBtn);
+    nodeLayer.appendChild(caseG);
+
+    // 模块根节点 → 用例节点连接线
+    drawConnector(lineLayer,
+      moduleAnchors.right, moduleAnchors.cy,
+      X_CASE, caseCY
+    );
+
+    // 子节点 group（可折叠）
+    const childG = svgEl('g', { class: 'case-children' });
+    const childLineG = svgEl('g', { class: 'case-child-lines' });
+    lineLayer.appendChild(childLineG);
+    nodeLayer.appendChild(childG);
+
+    // 折叠状态
+    let collapsed = false;
+    collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      collapsed = !collapsed;
+      childG.setAttribute('display', collapsed ? 'none' : '');
+      childLineG.setAttribute('display', collapsed ? 'none' : '');
+      collapseTxt.textContent = collapsed ? '+' : '−';
+      // 折叠后常显按钮，展开后恢复 hover 触发
+      if (collapsed) collapseBtn.classList.add('expanded');
+      else collapseBtn.classList.remove('expanded');
+    });
+    // hover 用例节点时显示折叠按钮
+    caseG.addEventListener('mouseenter', () => {
+      collapseBtn.style.opacity = '1';
+    });
+    caseG.addEventListener('mouseleave', () => {
+      if (!collapsed) collapseBtn.style.opacity = '';
+    });
+    collapseBg.addEventListener('mouseenter', () => {
+      collapseBg.setAttribute('fill', '#E6F4FF');
+    });
+    collapseBg.addEventListener('mouseleave', () => {
+      collapseBg.setAttribute('fill', '#fff');
+    });
+
+    // ── 动态列位置（无前置条件时步骤前移缩紧）──
+    const hasPrereq = !!prereq;
+    const hasSteps = steps.length > 0;
+    const stepX = hasPrereq ? X_STEP : X_PREREQ;
+    const resultX = stepX + STEP_W + H_GAP;
+
+    // 无子节点时隐藏折叠按钮
+    if (!hasPrereq && !hasSteps) {
+      collapseBtn.setAttribute('display', 'none');
+    }
+
+    // ── 前置条件节点 ──
+    let prereqAnchors = null;
+    if (hasPrereq) {
+      const prereqNodeG = svgEl('g', {
+        'data-case-id': c.id || '',
+        'data-field': 'prereq',
+      });
+      prereqAnchors = drawNode(
+        prereqNodeG, X_PREREQ, caseCY, PREREQ_W,
+        prereq, 'prereq', prereq, ''
+      );
+      bindEditDblClick(prereqNodeG, c, 'prereq', -1, prereq, prereqAnchors);
+      bindSelectable(prereqNodeG, c, 'prereq', -1, prereqAnchors);
+      childG.appendChild(prereqNodeG);
+      drawConnector(childLineG,
+        caseCoreAnchors.right, caseCoreAnchors.cy,
+        prereqAnchors.left, prereqAnchors.cy
+      );
+    }
+
+    // ── 步骤 + 预期结果（支持多行预期结果）──
+    if (hasSteps) {
+      let rowOffset = 0;
+      steps.forEach((step, si) => {
+        const stepText   = step.desc || step.description || '';
+        const resultText = step.result || step.expected || '';
+        const resultLines = resultText ? resultText.split('\n').filter(l => l.trim()) : [];
+        const numResultRows = Math.max(1, resultLines.length);
+
+        // 步骤节点：垂直居中于该步骤的所有预期结果行
+        const stepStartY = curY + rowOffset * ROW_HEIGHT;
+        const stepCY = stepStartY + (numResultRows - 1) * ROW_HEIGHT / 2;
+
+        const stepNodeG = svgEl('g', {
+          'data-case-id':   c.id || '',
+          'data-step-index': si,
+          'data-field': 'step',
+        });
+        const stepAnchors = drawNode(
+          stepNodeG, stepX, stepCY, STEP_W,
+          stepText, 'step', stepText, ''
+        );
+        bindEditDblClick(stepNodeG, c, 'step', si, stepText, stepAnchors);
+        bindSelectable(stepNodeG, c, 'step', si, stepAnchors);
+        childG.appendChild(stepNodeG);
+
+        // 连接线：prereq/case → step
+        const srcAnchors = prereqAnchors || caseCoreAnchors;
+        drawConnector(childLineG,
+          srcAnchors.right, srcAnchors.cy,
+          stepAnchors.left, stepAnchors.cy
+        );
+
+        // 预期结果节点（每行独立渲染）
+        resultLines.forEach((line, ri) => {
+          const resultCY = stepStartY + ri * ROW_HEIGHT;
+          const resultNodeG = svgEl('g', {
+            'data-case-id':    c.id || '',
+            'data-step-index':   si,
+            'data-result-index': ri,
+            'data-field': 'result',
+          });
+          const resultAnchors = drawNode(
+            resultNodeG, resultX, resultCY, RESULT_W,
+            line, 'result', line, ''
+          );
+          bindEditDblClick(resultNodeG, c, 'result', si, line, resultAnchors, ri);
+          bindSelectable(resultNodeG, c, 'result', si, resultAnchors, ri);
+          childG.appendChild(resultNodeG);
+          drawConnector(childLineG,
+            stepAnchors.right, stepAnchors.cy,
+            resultAnchors.left, resultAnchors.cy
+          );
+        });
+
+        rowOffset += numResultRows;
+      });
+    }
+
+    // 下一个用例的起始 Y
+    curY += rows * ROW_HEIGHT + CASE_GAP;
+  });
+
+  // ── 添加用例按钮（模块根节点下方）──
+  const addCaseY = curY - CASE_GAP + ROW_HEIGHT * 0.3;
+  drawAddBtn(nodeLayer, X_CASE + CASE_W / 2, addCaseY, '+ 用例', async () => {
+    await createNewCase('新用例');
+    reloadCurrentModule();
+  });
+  // 连接线：模块根 → 新增按钮
+  drawConnector(lineLayer,
+    moduleAnchors.right, moduleAnchors.cy,
+    X_CASE, addCaseY
+  );
+
+  // 首次加载时重置缩放，增删改后保持当前缩放
+  if (resetScale) applyScale(1.0, false);
+  else applyScale(scale, false);
+}
+
+/* ════════════════════════════════════════════════════════
+   选中节点 + ＋按钮 + Delete 删除
+════════════════════════════════════════════════════════ */
+
+/** 当前选中状态 */
+let selectedNode = null;   // { g, caseObj, field, stepIdx, anchors, addBtnG }
+
+/** 清除选中 */
+function clearSelection() {
+  if (selectedNode) {
+    selectedNode.g.classList.remove('node-selected');
+    if (selectedNode.addBtnG) selectedNode.addBtnG.remove();
+    selectedNode = null;
+  }
+}
+
+/** 绘制节点右侧的 ＋ 圆形按钮 */
+function drawInlineAddBtn(anchors, onClick) {
+  const r = 10;
+  const cx = anchors.right + 16;
+  const cy = anchors.cy;
+  const g = svgEl('g', { class: 'node-add-btn visible', style: 'cursor:pointer' });
+  const circle = svgEl('circle', {
+    cx, cy, r,
+    fill: '#fff', stroke: '#4096FF', 'stroke-width': 1.5,
+  });
+  const txt = svgEl('text', {
+    x: cx, y: cy,
+    'text-anchor': 'middle', 'dominant-baseline': 'middle',
+    'font-size': 16, fill: '#4096FF', 'font-weight': 700,
+    'pointer-events': 'none',
+  });
+  txt.textContent = '+';
+  g.appendChild(circle);
+  g.appendChild(txt);
+
+  g.addEventListener('mouseenter', () => circle.setAttribute('fill', '#E6F4FF'));
+  g.addEventListener('mouseleave', () => circle.setAttribute('fill', '#fff'));
+  g.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+
+  // 放入 SVG 的节点层
+  const nodeLayer = document.getElementById('nodes');
+  if (nodeLayer) nodeLayer.appendChild(g);
+  return g;
+}
+
+/**
+ * 为节点绑定 click 选中行为
+ * 选中后：节点高亮 + 右侧出现 ＋ 按钮 + 键盘 Delete 删除
+ *
+ * ＋ 按钮的行为取决于 field 类型：
+ *   prereq → 在步骤列新增一个步骤
+ *   step   → 在预期结果列新增该步骤的预期结果（若已有则新增下一个步骤）
+ *   result → 新增下一个步骤
+ */
+function bindSelectable(nodeG, caseObj, field, stepIdx, anchors, resultIdx) {
+  nodeG.style.cursor = 'pointer';
+  nodeG.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    // 如果点击的是已选中节点，不重复处理
+    if (selectedNode && selectedNode.g === nodeG) return;
+
+    clearSelection();
+
+    // 高亮
+    nodeG.classList.add('node-selected');
+
+    // 根据节点类型决定 ＋ 按钮行为
+    let addAction;
+    if (field === 'case' || field === 'prereq') {
+      // 用例节点 / 前置条件右侧 ＋ → 新增步骤
+      addAction = async () => {
+        const stepsArr = parseSteps(caseObj.steps);
+        stepsArr.push({ id: String(stepsArr.length + 1), num: stepsArr.length + 1, desc: '新步骤', result: '' });
+        await patchCaseSteps(caseObj, stepsArr);
+        reloadCurrentModule();
+      };
+    } else if (field === 'step') {
+      // 步骤右侧 ＋ → 为该步骤新增预期结果
+      addAction = async () => {
+        const arr = parseSteps(caseObj.steps);
+        if (arr[stepIdx]) {
+          const existing = arr[stepIdx].result || '';
+          arr[stepIdx].result = existing ? existing + '\n新预期结果' : '新预期结果';
+        }
+        await patchCaseSteps(caseObj, arr);
+        reloadCurrentModule();
+      };
+    }
+    // result 节点不显示 ＋ 按钮
+
+    const addBtnG = addAction ? drawInlineAddBtn(anchors, addAction) : null;
+
+    selectedNode = { g: nodeG, caseObj, field, stepIdx, anchors, addBtnG, resultIdx };
+  });
+}
+
+/** 键盘 Delete/Backspace 删除选中节点 */
+document.addEventListener('keydown', async (e) => {
+  if (!selectedNode) return;
+  if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+  // 如果正在编辑（contenteditable 或 input），不拦截
+  const active = document.activeElement;
+  if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+
+  e.preventDefault();
+  const { caseObj, field, stepIdx } = selectedNode;
+
+  try {
+    if (field === 'prereq') {
+      // 删除前置条件
+      await apiFetch(`/api/cases/${caseObj.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prerequisite: '' }),
+      });
+    } else if (field === 'step') {
+      // 删除整个步骤（含预期结果）
+      const arr = parseSteps(caseObj.steps);
+      arr.splice(stepIdx, 1);
+      arr.forEach((s, i) => { s.id = String(i + 1); s.num = i + 1; });
+      await patchCaseSteps(caseObj, arr);
+    } else if (field === 'result') {
+      // 删除该行预期结果
+      const arr = parseSteps(caseObj.steps);
+      if (arr[stepIdx]) {
+        const ri = selectedNode.resultIdx;
+        const lines = (arr[stepIdx].result || '').split('\n').filter(l => l.trim());
+        if (ri != null && lines.length > 1) {
+          lines.splice(ri, 1);
+          arr[stepIdx].result = lines.join('\n');
+        } else {
+          arr[stepIdx].result = '';
+        }
+      }
+      await patchCaseSteps(caseObj, arr);
+    }
+    clearSelection();
+    reloadCurrentModule();
+  } catch (err) {
+    alert('删除失败：' + err.message);
+  }
+});
+
+/** 点击空白处取消选中 */
+$svg.addEventListener('click', () => clearSelection());
+
+/** 更新用例的 steps 并保存到服务端 */
+async function patchCaseSteps(caseObj, stepsArr) {
+  try {
+    await apiFetch(`/api/cases/${caseObj.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steps: stepsArr }),
+    });
+    caseObj.steps = stepsArr;
+  } catch (err) {
+    alert('保存失败：' + err.message);
+    throw err;
+  }
+}
+
+/** 创建新用例 */
+async function createNewCase(name) {
+  const projectId = PROJECT_MAP_JS[currentProject];
+  if (!projectId) { alert('未知项目'); return; }
+  try {
+    await apiFetch('/api/cases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        moduleId: currentModuleId,
+        name,
+        steps: [{ desc: '步骤 1', result: '' }],
+      }),
+    });
+  } catch (err) {
+    alert('创建用例失败：' + err.message);
+    throw err;
+  }
+}
+
+/** 重新加载当前模块（新增/删除后刷新脑图） */
+function reloadCurrentModule() {
+  // 本地重渲染（不重新拉取 API，避免加载闪烁）
+  renderMindmap(currentCases, currentModuleName, false);
+}
+
+/**
+ * 绘制 ＋ 按钮（虚线椭圆，用于底部 + 用例）
+ */
+function drawAddBtn(parent, cx, cy, label, onClick) {
+  const g = svgEl('g', { style: 'cursor:pointer' });
+  const w = label.length * 13 + 16;
+  const h = 26;
+  const rect = svgEl('rect', {
+    x: cx - w / 2, y: cy - h / 2, width: w, height: h,
+    rx: h / 2,
+    fill: '#fff', stroke: '#D9D9D9', 'stroke-width': 1,
+    'stroke-dasharray': '4,3',
+  });
+  const txt = svgEl('text', {
+    x: cx, y: cy,
+    'text-anchor': 'middle', 'dominant-baseline': 'middle',
+    'font-size': 12, fill: '#BFBFBF', 'font-weight': 500,
+    'pointer-events': 'none',
+  });
+  txt.textContent = label;
+  g.appendChild(rect);
+  g.appendChild(txt);
+  g.addEventListener('mouseenter', () => { rect.setAttribute('stroke', '#4096FF'); txt.setAttribute('fill', '#4096FF'); });
+  g.addEventListener('mouseleave', () => { rect.setAttribute('stroke', '#D9D9D9'); txt.setAttribute('fill', '#BFBFBF'); });
+  g.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+  parent.appendChild(g);
+  return g;
+}
+
+/* ════════════════════════════════════════════════════════
+   双击编辑功能
+════════════════════════════════════════════════════════ */
+
+/**
+ * 为节点绑定双击编辑事件（prereq / step / result）
+ * @param {SVGElement} nodeG    - 节点 g 元素
+ * @param {Object}     caseObj  - 用例对象（含 id, steps, prerequisite）
+ * @param {string}     field    - 'prereq' | 'step' | 'result'
+ * @param {number}     stepIdx  - 步骤下标（prereq 传 -1）
+ * @param {string}     origText - 原始完整文字
+ * @param {Object}     anchors  - { top, left, right, cy } 节点坐标
+ */
+function bindEditDblClick(nodeG, caseObj, field, stepIdx, origText, anchors, resultIdx) {
+  nodeG.style.cursor = 'pointer';
+  nodeG.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, resultIdx);
+  });
+}
+
+/**
+ * 在节点位置叠加 HTML contenteditable 编辑框
+ */
+function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, resultIdx) {
+  console.log('[DBG] openInlineEditor called:', field, stepIdx, origText && origText.slice(0,20));
+  // 移除已有编辑框
+  document.querySelectorAll('.inline-editor').forEach(el => el.remove());
+
+  // 计算节点在页面中的绝对位置（考虑 SVG 偏移 + scale）
+  const svgRect    = $svg.getBoundingClientRect();
+  const scrollRect = $canvasScroll.getBoundingClientRect();
+
+  // SVG 内坐标 → 屏幕坐标
+  const absLeft = scrollRect.left + (anchors.left - $canvasScroll.scrollLeft) * scale
+    + ($svg.getBoundingClientRect().left - scrollRect.left);
+  const absTop  = scrollRect.top  + (anchors.top  - $canvasScroll.scrollTop)  * scale
+    + ($svg.getBoundingClientRect().top  - scrollRect.top);
+
+  // 更直接的方式：利用 SVG getBoundingClientRect
+  const nodeW = (anchors.right - anchors.left) * scale;
+  const nodeH = NODE_H * scale;
+
+  // 定位相对于 $canvasScroll 的父元素（#main）
+  const mainRect = document.getElementById('main').getBoundingClientRect();
+  const edLeft = svgRect.left - mainRect.left + anchors.left * scale - $canvasScroll.scrollLeft;
+  const edTop  = svgRect.top  - mainRect.top  + anchors.top  * scale - $canvasScroll.scrollTop;
+
+  const editor = document.createElement('div');
+  editor.className = 'inline-editor';
+  editor.contentEditable = 'true';
+  editor.textContent = origText;
+  editor.style.cssText = [
+    `position:absolute`,
+    `left:${edLeft}px`,
+    `top:${edTop}px`,
+    `width:${nodeW}px`,
+    `min-height:${nodeH}px`,
+    `background:#fff`,
+    `border:2px solid #4096FF`,
+    `border-radius:4px`,
+    `font-size:${13 * scale}px`,
+    `padding:4px`,
+    `z-index:200`,
+    `outline:none`,
+    `white-space:pre-wrap`,
+    `word-break:break-all`,
+    `line-height:1.4`,
+    `cursor:text`,
+  ].join(';');
+
+  document.getElementById('main').appendChild(editor);
+  editor.focus();
+
+  // 选中全文
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+
+  let committed = false;
+
+  // 提交编辑
+  async function commitEdit() {
+    if (committed) return;
+    committed = true;
+    const newText = editor.textContent.trim();
+    editor.remove();
+    if (newText === origText) return;
+
+    // 构造 PATCH body
+    let body = {};
+    if (field === 'prereq') {
+      body = { prerequisite: newText };
+    } else {
+      // 更新 steps 数组
+      const steps = parseSteps(caseObj.steps);
+      if (field === 'step') {
+        if (steps[stepIdx]) steps[stepIdx].desc = newText;
+      } else if (field === 'result') {
+        if (steps[stepIdx]) {
+          if (resultIdx != null) {
+            // 编辑特定行
+            const lines = (steps[stepIdx].result || '').split('\n').filter(l => l.trim());
+            lines[resultIdx] = newText;
+            steps[stepIdx].result = lines.join('\n');
+          } else {
+            steps[stepIdx].result = newText;
+          }
+        }
+      }
+      body = { steps };
+    }
+
+    try {
+      await apiFetch(`/api/cases/${caseObj.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      // 更新内存中的用例对象
+      if (field === 'prereq') {
+        caseObj.prerequisite = newText;
+      } else {
+        const steps = parseSteps(caseObj.steps);
+        if (field === 'step' && steps[stepIdx]) steps[stepIdx].desc = newText;
+        if (field === 'result' && steps[stepIdx]) {
+          if (resultIdx != null) {
+            const lines = (steps[stepIdx].result || '').split('\n').filter(l => l.trim());
+            lines[resultIdx] = newText;
+            steps[stepIdx].result = lines.join('\n');
+          } else {
+            steps[stepIdx].result = newText;
+          }
+        }
+        caseObj.steps = steps;
+      }
+
+      // 更新 SVG 节点显示文字（badge 后面的第二个 text 元素）
+      const textEls = nodeG.querySelectorAll('text');
+      const textEl = textEls.length >= 2 ? textEls[1] : textEls[0];
+      if (textEl) {
+        let w;
+        if (field === 'prereq') w = PREREQ_W;
+        else if (field === 'step') w = STEP_W;
+        else w = RESULT_W;
+
+        const bs = BADGE_STYLES[field === 'prereq' ? 'prereq' : field];
+        const badgeW = bs.label.length * 13 + BADGE_PAD * 2;
+        const textMaxPx = w - badgeW - 12 - 8;
+        textEl.textContent = truncateByPixel(newText, Math.max(textMaxPx, 30));
+      }
+    } catch (err) {
+      console.error('保存失败：', err);
+      alert('保存失败：' + err.message);
+    }
+  }
+
+  // 取消编辑
+  function cancelEdit() {
+    if (committed) return;
+    committed = true;
+    editor.remove();
+  }
+
+  editor.addEventListener('blur', commitEdit);
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   缩放与平移
+════════════════════════════════════════════════════════ */
+
+function applyScale(newScale, showHint = true) {
+  scale = Math.min(2.0, Math.max(0.5, newScale));
+  $svg.style.transform = `scale(${scale})`;
+  // 更新 SVG 容器的实际占用尺寸（让滚动条正常）
+  const w = parseFloat($svg.getAttribute('width') || 0);
+  const h = parseFloat($svg.getAttribute('height') || 0);
+  $svg.style.width  = (w * scale) + 'px';
+  $svg.style.height = (h * scale) + 'px';
+  $svg.style.transformOrigin = '0 0';
+  if (showHint) showZoomHint(scale * 100);
+}
+
+// Ctrl + 滚轮缩放
+$canvasScroll.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    applyScale(scale + delta);
+  }
+}, { passive: false });
+
+// 鼠标拖拽平移
+let isDragging = false, dragStartX = 0, dragStartY = 0, scrollStartX = 0, scrollStartY = 0;
+
+$canvasScroll.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  scrollStartX = $canvasScroll.scrollLeft;
+  scrollStartY = $canvasScroll.scrollTop;
+  $canvasScroll.classList.add('grabbing');
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  $canvasScroll.scrollLeft = scrollStartX - (e.clientX - dragStartX);
+  $canvasScroll.scrollTop  = scrollStartY - (e.clientY - dragStartY);
+});
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  $canvasScroll.classList.remove('grabbing');
+});
+
+/* ════════════════════════════════════════════════════════
+   Tooltip
+════════════════════════════════════════════════════════ */
+function showTooltip(e, text) {
+  $tooltip.textContent = text;
+  $tooltip.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const x = e.clientX + 14;
+  const y = e.clientY + 10;
+  $tooltip.style.left = Math.min(x, window.innerWidth - 340) + 'px';
+  $tooltip.style.top  = Math.min(y, window.innerHeight - 80) + 'px';
+}
+function hideTooltip() { $tooltip.style.display = 'none'; }
+
+/* ════════════════════════════════════════════════════════
+   模块树渲染
+════════════════════════════════════════════════════════ */
+
+/**
+ * 递归渲染模块树节点
+ * @param {Array}  nodes   - 树节点数组
+ * @param {number} depth   - 缩进层级
+ * @param {boolean} isRoot - 是否第一层（默认展开）
+ */
+function renderTree(nodes, depth, isRoot) {
+  if (!nodes || nodes.length === 0) return document.createDocumentFragment();
+  const frag = document.createDocumentFragment();
+
+  nodes.forEach(node => {
+    const hasChildren = node.children && node.children.length > 0;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tree-node';
+
+    const item = document.createElement('div');
+    item.className = 'tree-item' + (isRoot && hasChildren ? ' expanded' : '');
+    item.style.paddingLeft = (14 + depth * 16) + 'px';
+    item.dataset.id = node.id;
+
+    const toggle = document.createElement('span');
+    toggle.className = 'toggle';
+    toggle.textContent = hasChildren ? '▶' : '';
+    item.appendChild(toggle);
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'node-name';
+    nameEl.textContent = node.name;
+    nameEl.title = node.name;
+    item.appendChild(nameEl);
+
+    wrapper.appendChild(item);
+
+    // 子节点容器
+    let childrenEl = null;
+    if (hasChildren) {
+      childrenEl = document.createElement('div');
+      childrenEl.className = 'tree-children' + (isRoot ? ' open' : '');
+      childrenEl.appendChild(renderTree(node.children, depth + 1, false));
+      wrapper.appendChild(childrenEl);
+    }
+
+    // 点击：展开/收起 + 加载用例
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      // 选中高亮
+      document.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+
+      // 展开/收起子节点
+      if (hasChildren) {
+        const expanded = item.classList.toggle('expanded');
+        childrenEl.classList.toggle('open', expanded);
+      }
+
+      // 加载该节点的用例
+      loadCases(node.id, node.name);
+    });
+
+    frag.appendChild(wrapper);
+  });
+  return frag;
+}
+
+/* ════════════════════════════════════════════════════════
+   数据加载
+════════════════════════════════════════════════════════ */
+
+/** 初始化：加载项目列表 */
+async function initProjects() {
+  try {
+    const projects = await apiFetch('/api/projects');
+    $projectSelect.innerHTML = '';
+    projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      $projectSelect.appendChild(opt);
+    });
+    if (projects.length > 0) {
+      currentProject = projects[0];
+      await loadModules(currentProject);
+    }
+  } catch (e) {
+    showError('加载项目列表失败：' + e.message, initProjects);
+  }
+}
+
+/** 加载模块树 */
+async function loadModules(project) {
+  showLoading('加载模块树…');
+  $moduleTree.innerHTML = '';
+  currentModuleId = '';
+  currentModuleName = '';
+  currentCases = [];
+  renderMindmap([], '');
+  $placeholder.style.display = '';
+  $placeholder.querySelector('div:last-child').textContent = '请在左侧选择一个模块';
+
+  try {
+    const modules = await apiFetch(`/api/modules?project=${encodeURIComponent(project)}`);
+    hideLoading();
+    if (!modules || modules.length === 0) {
+      $moduleTree.innerHTML = '<div class="empty-tip">暂无模块</div>';
+      return;
+    }
+    $moduleTree.appendChild(renderTree(modules, 0, true));
+  } catch (e) {
+    hideLoading();
+    showError('加载模块树失败：' + e.message, () => loadModules(project));
+  }
+}
+
+/** 加载指定模块的用例并渲染脑图 */
+async function loadCases(moduleId, moduleName, silent = false) {
+  if (!currentProject) return;
+  currentModuleId = moduleId;
+  if (moduleName) currentModuleName = moduleName;  // 记录当前模块名
+
+  if (!silent) showLoading(`加载「${moduleName}」用例…`);
+
+  try {
+    const cases = await apiFetch(
+      `/api/cases?project=${encodeURIComponent(currentProject)}&moduleId=${encodeURIComponent(moduleId)}`
+    );
+    if (!silent) hideLoading();
+    hideError();
+
+    if (!silent) {
+      currentCases = cases || [];
+      renderMindmap(currentCases, currentModuleName);
+    } else {
+      // 静默刷新：对比 updateTime，如有变更则重新渲染
+      const newCases = cases || [];
+      const changed = hasChanged(currentCases, newCases);
+      if (changed) {
+        currentCases = newCases;
+        renderMindmap(currentCases, currentModuleName);
+        flashRefreshDot();
+      }
+    }
+  } catch (e) {
+    if (!silent) {
+      hideLoading();
+      showError('加载用例失败：' + e.message, () => loadCases(moduleId, moduleName));
+    }
+  }
+}
+
+/** 检测用例列表是否有变更（对比 updateTime + 数量） */
+function hasChanged(oldCases, newCases) {
+  if (oldCases.length !== newCases.length) return true;
+  const oldMap = new Map(oldCases.map(c => [c.id, c.updateTime || c.updateUser]));
+  return newCases.some(c => oldMap.get(c.id) !== (c.updateTime || c.updateUser));
+}
+
+/** 刷新指示器闪烁 */
+function flashRefreshDot() {
+  $refreshDot.classList.remove('pulse');
+  void $refreshDot.offsetWidth;  // reflow 触发重播
+  $refreshDot.classList.add('pulse');
+}
+
+/* ════════════════════════════════════════════════════════
+   自动刷新（30 秒轮询）
+════════════════════════════════════════════════════════ */
+function startAutoRefresh() {
+  stopAutoRefresh();
+  autoRefreshTimer = setInterval(() => {
+    if (currentModuleId) {
+      loadCases(currentModuleId, '', true);  // 静默刷新
+    }
+  }, 30000);
+}
+function stopAutoRefresh() {
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+
+/* ════════════════════════════════════════════════════════
+   交互事件绑定
+════════════════════════════════════════════════════════ */
+
+// 侧栏展开/收起
+$toggleBtn.addEventListener('click', () => {
+  const collapsed = $sidebar.classList.toggle('collapsed');
+  $toggleBtn.textContent = collapsed ? '▶' : '◀';
+});
+
+// 全屏
+$btnFullscreen.addEventListener('click', () => {
+  const isActive = $btnFullscreen.classList.toggle('fullscreen-active');
+  if (isActive) {
+    $sidebar.classList.add('collapsed');
+    $toggleBtn.textContent = '▶';
+  } else {
+    $sidebar.classList.remove('collapsed');
+    $toggleBtn.textContent = '◀';
+  }
+  $btnFullscreen.textContent = isActive ? '⛶ 退出全屏' : '⛶ 全屏';
+});
+
+// 手动刷新
+$btnRefresh.addEventListener('click', () => {
+  if (currentModuleId) {
+    // 找到当前选中节点的名字
+    const activeItem = document.querySelector('.tree-item.active');
+    const name = activeItem ? activeItem.querySelector('.node-name').textContent : '';
+    loadCases(currentModuleId, name);
+  }
+});
+
+// 重试按钮
+$btnRetry.addEventListener('click', () => {
+  hideError();
+  if (lastRetryAction) lastRetryAction();
+});
+
+// 项目切换
+$projectSelect.addEventListener('change', () => {
+  currentProject = $projectSelect.value;
+  stopAutoRefresh();
+  loadModules(currentProject).then(() => startAutoRefresh());
+});
+
+/* ════════════════════════════════════════════════════════
+   启动
+════════════════════════════════════════════════════════ */
+/** 解析 URL 参数 */
+function getUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    project: params.get('project') || '',
+    moduleId: params.get('moduleId') || '',
+    embedded: params.get('embedded') === '1',
+  };
+}
+
+/** 在模块树中查找并点击指定 moduleId 的节点，同时展开其祖先 */
+function expandAndClickModule(moduleId) {
+  if (!moduleId) return;
+  const items = $moduleTree.querySelectorAll('.tree-item');
+  for (const item of items) {
+    if (item.dataset.id === moduleId) {
+      // 展开所有祖先节点
+      let parent = item.closest('.tree-children');
+      while (parent) {
+        parent.classList.add('open');
+        const siblingItem = parent.previousElementSibling;
+        if (siblingItem && siblingItem.classList.contains('tree-item')) {
+          siblingItem.classList.add('expanded');
+        }
+        parent = parent.parentElement?.closest('.tree-children');
+      }
+      // 点击该节点
+      item.click();
+      return;
+    }
+  }
+}
+
+(async () => {
+  const urlParams = getUrlParams();
+
+  // 嵌入模式：隐藏 header 和侧栏切换按钮
+  if (urlParams.embedded) {
+    document.body.classList.add('embedded');
+  }
+
+  await initProjects();
+
+  // URL 指定项目：自动选择
+  if (urlParams.project && $projectSelect.querySelector(`option[value="${urlParams.project}"]`)) {
+    $projectSelect.value = urlParams.project;
+    currentProject = urlParams.project;
+    await loadModules(currentProject);
+  }
+
+  // URL 指定模块：自动展开并点击
+  if (urlParams.moduleId) {
+    expandAndClickModule(urlParams.moduleId);
+  }
+
+  startAutoRefresh();
+  console.log('%c🗺 MeterSphere 脑图查看器', 'font-size:16px;color:#4096FF;font-weight:bold;');
+  console.log('提示：Ctrl + 滚轮 缩放画布，拖拽平移，点击左侧模块加载用例');
+})();
+</script>
+</body>
+</html>
