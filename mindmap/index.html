@@ -176,6 +176,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Ping
 #canvas-scroll {
   width: 100%; height: 100%;
   overflow: auto; cursor: grab;
+  position: relative;
 }
 #canvas-scroll.grabbing { cursor: grabbing; }
 #canvas-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -251,7 +252,9 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Ping
 
 /* ── 嵌入模式（embedded=1）── */
 body.embedded #header { display: none; }
+body.embedded #sidebar { display: none !important; }
 body.embedded #btn-toggle-sidebar { display: none; }
+body.embedded #main { margin-left: 0 !important; }
 
 /* 自动刷新指示器 */
 #refresh-dot {
@@ -288,9 +291,45 @@ body.embedded #btn-toggle-sidebar { display: none; }
   box-shadow: 0 2px 12px rgba(64,150,255,0.25);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
+
+/* 自定义确认弹窗 */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.35); align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: #fff; border-radius: 8px; padding: 24px; width: 360px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.modal-box .modal-icon { text-align: center; margin-bottom: 12px; font-size: 36px; }
+.modal-box .modal-msg { text-align: center; font-size: 14px; color: #333; line-height: 1.6; margin-bottom: 20px; }
+.modal-box .modal-actions { display: flex; justify-content: center; gap: 12px; }
+.modal-box .modal-btn {
+  padding: 6px 24px; border-radius: 4px; font-size: 14px; cursor: pointer; border: 1px solid #D9D9D9;
+  background: #fff; color: #333; transition: all 0.15s;
+}
+.modal-box .modal-btn:hover { border-color: #4096FF; color: #4096FF; }
+.modal-box .modal-btn.danger {
+  background: #FF4D4F; color: #fff; border-color: #FF4D4F;
+}
+.modal-box .modal-btn.danger:hover { background: #FF7875; border-color: #FF7875; }
 </style>
 </head>
 <body>
+
+<!-- 自定义确认弹窗 -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-icon">&#9888;</div>
+    <div class="modal-msg" id="confirm-msg"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="confirm-cancel">取消</button>
+      <button class="modal-btn danger" id="confirm-ok">确认删除</button>
+    </div>
+  </div>
+</div>
 
 <div id="app">
   <!-- Header -->
@@ -444,6 +483,28 @@ const $svg            = document.getElementById('mindmap-svg');
 const $btnRefresh     = document.getElementById('btn-refresh');
 const $btnFullscreen  = document.getElementById('btn-fullscreen');
 const $zoomHint       = document.getElementById('zoom-hint');
+
+/** 自定义确认弹窗（替代 confirm()，避免 iframe 中显示丑陋的域名提示） */
+function showConfirm(msg) {
+  return new Promise((resolve) => {
+    const $modal  = document.getElementById('confirm-modal');
+    const $msg    = document.getElementById('confirm-msg');
+    const $ok     = document.getElementById('confirm-ok');
+    const $cancel = document.getElementById('confirm-cancel');
+    $msg.textContent = msg;
+    $modal.classList.add('show');
+    function close(result) {
+      $modal.classList.remove('show');
+      $ok.removeEventListener('click', onOk);
+      $cancel.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onOk() { close(true); }
+    function onCancel() { close(false); }
+    $ok.addEventListener('click', onOk);
+    $cancel.addEventListener('click', onCancel);
+  });
+}
 const $tooltip        = document.getElementById('tooltip');
 const $caseCount      = document.getElementById('case-count');
 const $refreshDot     = document.getElementById('refresh-dot');
@@ -826,7 +887,8 @@ function renderMindmap(cases, moduleName, resetScale = true) {
       caseG, X_CASE, caseCY, CASE_W,
       c.name || '未命名用例', 'case', c.name, pri
     );
-    // 用例节点可选中，+ → 新增步骤
+    // 用例节点可选中：+ → 新增步骤，双击 → 编辑用例名称
+    bindEditDblClick(caseG, c, 'caseName', -1, c.name || '', caseCoreAnchors);
     bindSelectable(caseG, c, 'case', -1, caseCoreAnchors);
 
     // 折叠按钮（右侧 +/- 圆形）
@@ -990,17 +1052,11 @@ function renderMindmap(cases, moduleName, resetScale = true) {
     curY += rows * ROW_HEIGHT + CASE_GAP;
   });
 
-  // ── 添加用例按钮（模块根节点下方）──
-  const addCaseY = curY - CASE_GAP + ROW_HEIGHT * 0.3;
-  drawAddBtn(nodeLayer, X_CASE + CASE_W / 2, addCaseY, '+ 用例', async () => {
-    await createNewCase('新用例');
-    reloadCurrentModule();
-  });
-  // 连接线：模块根 → 新增按钮
-  drawConnector(lineLayer,
-    moduleAnchors.right, moduleAnchors.cy,
-    X_CASE, addCaseY
-  );
+  // ── 模块根节点 + 按钮 → 新增用例 ──
+  const moduleNodeG = nodeLayer.querySelector('g:first-child') || nodeLayer.firstChild;
+  if (moduleNodeG) {
+    bindSelectable(moduleNodeG, { id: '__module__' }, 'module', -1, moduleAnchors);
+  }
 
   // 首次加载时重置缩放，增删改后保持当前缩放
   if (resetScale) applyScale(1.0, false);
@@ -1078,9 +1134,22 @@ function bindSelectable(nodeG, caseObj, field, stepIdx, anchors, resultIdx) {
     // 高亮
     nodeG.classList.add('node-selected');
 
-    // 根据节点类型决定 ＋ 按钮行为
+    // 根据节点类型决定 ＋ 按钮行为（只读模式无 + 按钮）
     let addAction;
-    if (field === 'case' || field === 'prereq') {
+    if (isReadonly) {
+      // 只读模式：不显示任何 + 按钮
+    } else if (field === 'module') {
+      // 模块根节点 ＋ → 新增用例
+      addAction = async () => {
+        const result = await createNewCase('新用例');
+        // 新用例加入本地数据后重渲染
+        if (result && result.data) {
+          currentCases.push({ id: result.data.id || result.data, name: '新用例', steps: [{ id: '1', num: 1, desc: '步骤 1', result: '' }], prerequisite: '' });
+        }
+        // 通过 API 重新拉取以获取完整数据
+        if (currentModuleId) loadCases(currentModuleId, currentModuleName);
+      };
+    } else if (field === 'case' || field === 'prereq') {
       // 用例节点 / 前置条件右侧 ＋ → 新增步骤
       addAction = async () => {
         const stepsArr = parseSteps(caseObj.steps);
@@ -1110,6 +1179,7 @@ function bindSelectable(nodeG, caseObj, field, stepIdx, anchors, resultIdx) {
 
 /** 键盘 Delete/Backspace 删除选中节点 */
 document.addEventListener('keydown', async (e) => {
+  if (isReadonly) return;  // 只读模式禁用删除
   if (!selectedNode) return;
   if (e.key !== 'Delete' && e.key !== 'Backspace') return;
   // 如果正在编辑（contenteditable 或 input），不拦截
@@ -1120,7 +1190,15 @@ document.addEventListener('keydown', async (e) => {
   const { caseObj, field, stepIdx } = selectedNode;
 
   try {
-    if (field === 'prereq') {
+    if (field === 'case' || field === 'caseName') {
+      // 删除整条用例
+      const confirmed = await showConfirm(`确认删除用例「${caseObj.name}」？\n删除后可在回收站恢复。`);
+      if (!confirmed) return;
+      await apiFetch(`/api/cases/${caseObj.id}`, { method: 'DELETE' });
+      // 从本地数据中移除
+      const idx = currentCases.findIndex(c => c.id === caseObj.id);
+      if (idx >= 0) currentCases.splice(idx, 1);
+    } else if (field === 'prereq') {
       // 删除前置条件
       await apiFetch(`/api/cases/${caseObj.id}`, {
         method: 'PATCH',
@@ -1173,12 +1251,12 @@ async function patchCaseSteps(caseObj, stepsArr) {
   }
 }
 
-/** 创建新用例 */
+/** 创建新用例，返回 API 响应 */
 async function createNewCase(name) {
   const projectId = PROJECT_MAP_JS[currentProject];
-  if (!projectId) { alert('未知项目'); return; }
+  if (!projectId) { alert('未知项目'); return null; }
   try {
-    await apiFetch('/api/cases', {
+    return await apiFetch('/api/cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1246,6 +1324,7 @@ function bindEditDblClick(nodeG, caseObj, field, stepIdx, origText, anchors, res
   nodeG.style.cursor = 'pointer';
   nodeG.addEventListener('dblclick', (e) => {
     e.stopPropagation();
+    if (isReadonly) return;  // 只读模式禁用编辑
     openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, resultIdx);
   });
 }
@@ -1254,28 +1333,16 @@ function bindEditDblClick(nodeG, caseObj, field, stepIdx, origText, anchors, res
  * 在节点位置叠加 HTML contenteditable 编辑框
  */
 function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, resultIdx) {
-  console.log('[DBG] openInlineEditor called:', field, stepIdx, origText && origText.slice(0,20));
   // 移除已有编辑框
   document.querySelectorAll('.inline-editor').forEach(el => el.remove());
 
-  // 计算节点在页面中的绝对位置（考虑 SVG 偏移 + scale）
-  const svgRect    = $svg.getBoundingClientRect();
+  // 用 SVG 元素屏幕坐标 + scroll 容器偏移，精确定位编辑框
+  const nodeRect   = nodeG.getBoundingClientRect();
   const scrollRect = $canvasScroll.getBoundingClientRect();
-
-  // SVG 内坐标 → 屏幕坐标
-  const absLeft = scrollRect.left + (anchors.left - $canvasScroll.scrollLeft) * scale
-    + ($svg.getBoundingClientRect().left - scrollRect.left);
-  const absTop  = scrollRect.top  + (anchors.top  - $canvasScroll.scrollTop)  * scale
-    + ($svg.getBoundingClientRect().top  - scrollRect.top);
-
-  // 更直接的方式：利用 SVG getBoundingClientRect
-  const nodeW = (anchors.right - anchors.left) * scale;
-  const nodeH = NODE_H * scale;
-
-  // 定位相对于 $canvasScroll 的父元素（#main）
-  const mainRect = document.getElementById('main').getBoundingClientRect();
-  const edLeft = svgRect.left - mainRect.left + anchors.left * scale - $canvasScroll.scrollLeft;
-  const edTop  = svgRect.top  - mainRect.top  + anchors.top  * scale - $canvasScroll.scrollTop;
+  const edLeft = nodeRect.left - scrollRect.left + $canvasScroll.scrollLeft;
+  const edTop  = nodeRect.top  - scrollRect.top  + $canvasScroll.scrollTop;
+  const nodeW  = nodeRect.width;
+  const nodeH  = nodeRect.height;
 
   const editor = document.createElement('div');
   editor.className = 'inline-editor';
@@ -1290,7 +1357,7 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
     `background:#fff`,
     `border:2px solid #4096FF`,
     `border-radius:4px`,
-    `font-size:${13 * scale}px`,
+    `font-size:13px`,
     `padding:4px`,
     `z-index:200`,
     `outline:none`,
@@ -1300,7 +1367,7 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
     `cursor:text`,
   ].join(';');
 
-  document.getElementById('main').appendChild(editor);
+  $canvasScroll.appendChild(editor);
   editor.focus();
 
   // 选中全文
@@ -1321,7 +1388,9 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
 
     // 构造 PATCH body
     let body = {};
-    if (field === 'prereq') {
+    if (field === 'caseName') {
+      body = { name: newText };
+    } else if (field === 'prereq') {
       body = { prerequisite: newText };
     } else {
       // 更新 steps 数组
@@ -1331,7 +1400,6 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
       } else if (field === 'result') {
         if (steps[stepIdx]) {
           if (resultIdx != null) {
-            // 编辑特定行
             const lines = (steps[stepIdx].result || '').split('\n').filter(l => l.trim());
             lines[resultIdx] = newText;
             steps[stepIdx].result = lines.join('\n');
@@ -1351,7 +1419,9 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
       });
 
       // 更新内存中的用例对象
-      if (field === 'prereq') {
+      if (field === 'caseName') {
+        caseObj.name = newText;
+      } else if (field === 'prereq') {
         caseObj.prerequisite = newText;
       } else {
         const steps = parseSteps(caseObj.steps);
@@ -1368,20 +1438,8 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
         caseObj.steps = steps;
       }
 
-      // 更新 SVG 节点显示文字（badge 后面的第二个 text 元素）
-      const textEls = nodeG.querySelectorAll('text');
-      const textEl = textEls.length >= 2 ? textEls[1] : textEls[0];
-      if (textEl) {
-        let w;
-        if (field === 'prereq') w = PREREQ_W;
-        else if (field === 'step') w = STEP_W;
-        else w = RESULT_W;
-
-        const bs = BADGE_STYLES[field === 'prereq' ? 'prereq' : field];
-        const badgeW = bs.label.length * 13 + BADGE_PAD * 2;
-        const textMaxPx = w - badgeW - 12 - 8;
-        textEl.textContent = truncateByPixel(newText, Math.max(textMaxPx, 30));
-      }
+      // 更新完直接重渲染（确保布局和文字都正确）
+      reloadCurrentModule();
     } catch (err) {
       console.error('保存失败：', err);
       alert('保存失败：' + err.message);
@@ -1705,9 +1763,14 @@ function getUrlParams() {
   return {
     project: params.get('project') || '',
     moduleId: params.get('moduleId') || '',
+    moduleName: params.get('moduleName') || '',
     embedded: params.get('embedded') === '1',
+    readonly: params.get('readonly') === '1',
   };
 }
+
+/** 全局只读标志（readonly=1 时禁用所有编辑功能） */
+let isReadonly = false;
 
 /** 在模块树中查找并点击指定 moduleId 的节点，同时展开其祖先 */
 function expandAndClickModule(moduleId) {
@@ -1735,9 +1798,13 @@ function expandAndClickModule(moduleId) {
 (async () => {
   const urlParams = getUrlParams();
 
-  // 嵌入模式：隐藏 header 和侧栏切换按钮
+  // 嵌入模式：隐藏 header 和侧栏
   if (urlParams.embedded) {
     document.body.classList.add('embedded');
+  }
+  // 只读模式
+  if (urlParams.readonly) {
+    isReadonly = true;
   }
 
   await initProjects();
@@ -1749,9 +1816,14 @@ function expandAndClickModule(moduleId) {
     await loadModules(currentProject);
   }
 
-  // URL 指定模块：自动展开并点击
-  if (urlParams.moduleId) {
-    expandAndClickModule(urlParams.moduleId);
+  // URL 指定模块：嵌入模式直接加载用例，独立模式展开树节点
+  if (urlParams.moduleId && urlParams.moduleId !== 'all') {
+    if (urlParams.embedded) {
+      // 嵌入模式：跳过模块树，直接加载用例（使用 URL 传入的模块名）
+      loadCases(urlParams.moduleId, urlParams.moduleName);
+    } else {
+      expandAndClickModule(urlParams.moduleId);
+    }
   }
 
   startAutoRefresh();
