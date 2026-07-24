@@ -851,7 +851,6 @@
       slotName: 'tags',
       dataIndex: 'tags',
       showInTable: true,
-      isTag: true,
       width: 300,
       showDrag: true,
       filterConfig: {
