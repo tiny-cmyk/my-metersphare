@@ -127,7 +127,7 @@
           </template>
           <!-- 评审结果 -->
           <template #tags="{ record }">
-            <div @click.stop>
+            <div class="inline-tag-cell" @click.stop>
               <a-trigger
                 trigger="click"
                 position="bl"
@@ -135,31 +135,32 @@
                 @popup-visible-change="(v: boolean) => { if (!v) saveInlineTags(record); }"
               >
                 <div class="inline-tag-display">
-                  <MsTagGroup
-                    v-if="record.tags && record.tags.length"
-                    :tag-list="record.tags"
-                    type="primary"
-                    theme="outline"
-                    show-table
-                  />
-                  <span v-else class="text-[12px] text-[var(--color-text-4)]">添加标签</span>
+                  <template v-if="record.editTags && record.editTags.length">
+                    <a-tag v-for="tag in record.editTags.slice(0, 2)" :key="tag" color="arcoblue" size="small">
+                      {{ tag }}
+                    </a-tag>
+                    <a-tag v-if="record.editTags.length > 2" color="gray" size="small">
+                      +{{ record.editTags.length - 2 }}
+                    </a-tag>
+                  </template>
+                  <span v-else class="inline-tag-placeholder">—</span>
                 </div>
                 <template #content>
                   <div class="inline-tag-dropdown">
                     <div v-if="record.editTags && record.editTags.length" class="inline-tag-list">
-                      <div v-for="(tag, idx) in record.editTags" :key="idx" class="inline-tag-item">
-                        <a-tag
-                          color="arcoblue"
-                          closable
-                          @close="
-                            () => {
-                              record.editTags.splice(idx, 1);
-                            }
-                          "
-                        >
-                          {{ tag }}
-                        </a-tag>
-                      </div>
+                      <a-tag
+                        v-for="(tag, idx) in record.editTags"
+                        :key="idx"
+                        color="arcoblue"
+                        closable
+                        @close="
+                          () => {
+                            record.editTags.splice(idx, 1);
+                          }
+                        "
+                      >
+                        {{ tag }}
+                      </a-tag>
                     </div>
                     <div v-else class="inline-tag-empty">暂无标签</div>
                     <a-divider :margin="8" />
@@ -851,8 +852,7 @@
       slotName: 'tags',
       dataIndex: 'tags',
       showInTable: true,
-      isTag: true,
-      width: 300,
+      width: 240,
       showDrag: true,
       filterConfig: {
         mode: 'tags',
@@ -2274,16 +2274,22 @@
   :deep(.arco-radio-group) {
     display: flex;
   }
+  .inline-tag-cell {
+    width: 100%;
+  }
   .inline-tag-display {
     display: flex;
     align-items: center;
-    padding: 2px 4px;
+    padding: 2px 0;
     min-height: 28px;
     border-radius: 4px;
+    flex-wrap: wrap;
+    gap: 4px;
     cursor: pointer;
-    &:hover {
-      background: rgb(var(--primary-5) 0.06);
-    }
+  }
+  .inline-tag-placeholder {
+    font-size: 13px;
+    color: var(--color-text-4);
   }
   .inline-tag-dropdown {
     padding: 12px;
