@@ -74,19 +74,6 @@
             </a-radio-group>
           </template>
         </MsAdvanceFilter>
-        <!-- 标签快速筛选 -->
-        <div class="mt-[8px] flex items-center gap-[8px]">
-          <span class="shrink-0 text-[13px] text-[var(--color-text-2)]"
-            >{{ t('caseManagement.featureCase.tagFilter') }}：</span
-          >
-          <MsTagsInput
-            v-model:model-value="quickFilterTags"
-            class="flex-1"
-            :allow-clear="true"
-            :placeholder="t('caseManagement.featureCase.tagFilterPlaceholder')"
-            @change="applyTagQuickFilter"
-          />
-        </div>
         <ms-base-table
           v-bind="propsRes"
           ref="tableRef"
