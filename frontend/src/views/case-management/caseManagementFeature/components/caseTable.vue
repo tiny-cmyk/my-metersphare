@@ -128,13 +128,56 @@
           <!-- 评审结果 -->
           <template #tags="{ record }">
             <div @click.stop>
-              <MsTagsInput
-                v-model:model-value="record.editTags"
-                class="inline-tag-editor"
-                allow-clear
-                @blur="saveInlineTags(record)"
-                @press-enter="saveInlineTags(record)"
-              />
+              <a-trigger
+                trigger="click"
+                position="bl"
+                :popup-offset="4"
+                @popup-visible-change="(v: boolean) => { if (!v) saveInlineTags(record); }"
+              >
+                <div class="inline-tag-display">
+                  <MsTagGroup
+                    v-if="record.tags && record.tags.length"
+                    :tag-list="record.tags"
+                    type="primary"
+                    theme="outline"
+                    show-table
+                  />
+                  <span v-else class="text-[12px] text-[var(--color-text-4)]">添加标签</span>
+                </div>
+                <template #content>
+                  <div class="inline-tag-dropdown">
+                    <div v-if="record.editTags && record.editTags.length" class="inline-tag-list">
+                      <div v-for="(tag, idx) in record.editTags" :key="idx" class="inline-tag-item">
+                        <a-tag
+                          color="arcoblue"
+                          closable
+                          @close="
+                            () => {
+                              record.editTags.splice(idx, 1);
+                            }
+                          "
+                        >
+                          {{ tag }}
+                        </a-tag>
+                      </div>
+                    </div>
+                    <div v-else class="inline-tag-empty">暂无标签</div>
+                    <a-divider :margin="8" />
+                    <a-input
+                      size="small"
+                      placeholder="输入标签名，回车添加"
+                      allow-clear
+                      @press-enter="(e: Event) => {
+                        const val = (e.target as HTMLInputElement).value.trim();
+                        if (val && !record.editTags.includes(val)) {
+                          record.editTags.push(val);
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }"
+                    />
+                  </div>
+                </template>
+              </a-trigger>
             </div>
           </template>
           <template #reviewStatus="{ record }">
@@ -2231,19 +2274,33 @@
   :deep(.arco-radio-group) {
     display: flex;
   }
-  .inline-tag-editor {
-    :deep(.arco-input-tag) {
-      padding: 0;
-      min-height: 28px;
-      border-color: transparent;
-      background: transparent;
-      &:hover {
-        border-color: rgb(var(--primary-5));
-      }
-      &.arco-input-tag-focus {
-        border-color: rgb(var(--primary-5));
-        background: #ffffff;
-      }
+  .inline-tag-display {
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    min-height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    &:hover {
+      background: rgb(var(--primary-5) 0.06);
     }
+  }
+  .inline-tag-dropdown {
+    padding: 12px;
+    width: 240px;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  }
+  .inline-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .inline-tag-empty {
+    padding: 4px 0;
+    font-size: 12px;
+    text-align: center;
+    color: var(--color-text-4);
   }
 </style>
