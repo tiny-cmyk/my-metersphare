@@ -1748,7 +1748,9 @@
     initData();
   }
 
-  function handleCellClick(record: TableData) {
+  function handleCellClick(record: TableData, column: any) {
+    // 点击标签列时不跳转详情（由行内编辑处理）
+    if (column?.dataIndex === 'tags') return;
     const index = propsRes.value.data.findIndex((item) => item.id === record.id);
     isEdit.value = false;
     showCaseDetail(record.id, index);
