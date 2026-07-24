@@ -127,29 +127,38 @@
           </template>
           <!-- 评审结果 -->
           <template #tags="{ record }">
-            <a-trigger
-              trigger="click"
-              position="bl"
-              :popup-offset="4"
-              @popup-visible-change="(v: boolean) => { if (!v) saveInlineTags(record); }"
-            >
-              <div class="flex cursor-pointer items-center gap-[4px]">
-                <MsTagGroup :tag-list="record.tags" type="primary" theme="outline" show-table />
-                <MsIcon
-                  type="icon-icon_edit_outlined"
-                  class="text-[var(--color-text-4)] hover:text-[rgb(var(--primary-5))]"
-                  :size="14"
-                />
-              </div>
-              <template #content>
-                <div class="w-[280px] rounded bg-white p-[12px] shadow-lg">
-                  <div class="mb-[8px] text-[13px] text-[var(--color-text-2)]">{{
-                    t('caseManagement.featureCase.tableColumnTag')
-                  }}</div>
-                  <MsTagsInput v-model:model-value="record.editTags" allow-clear />
+            <div @click.stop>
+              <a-trigger
+                trigger="click"
+                position="bl"
+                :popup-offset="4"
+                @popup-visible-change="(v: boolean) => { if (!v) saveInlineTags(record); }"
+              >
+                <div class="flex cursor-pointer items-center gap-[4px]">
+                  <MsTagGroup
+                    v-if="record.tags && record.tags.length"
+                    :tag-list="record.tags"
+                    type="primary"
+                    theme="outline"
+                    show-table
+                  />
+                  <span v-else class="text-[13px] text-[var(--color-text-4)]">--</span>
+                  <MsIcon
+                    type="icon-icon_edit_outlined"
+                    class="text-[var(--color-text-4)] hover:text-[rgb(var(--primary-5))]"
+                    :size="14"
+                  />
                 </div>
-              </template>
-            </a-trigger>
+                <template #content>
+                  <div class="w-[280px] rounded bg-white p-[12px] shadow-lg">
+                    <div class="mb-[8px] text-[13px] text-[var(--color-text-2)]">{{
+                      t('caseManagement.featureCase.tableColumnTag')
+                    }}</div>
+                    <MsTagsInput v-model:model-value="record.editTags" allow-clear />
+                  </div>
+                </template>
+              </a-trigger>
+            </div>
           </template>
           <template #reviewStatus="{ record }">
             <MsIcon
