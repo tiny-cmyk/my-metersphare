@@ -126,6 +126,31 @@
             <ExecuteStatusTag :execute-result="filterContent.value" />
           </template>
           <!-- 评审结果 -->
+          <template #tags="{ record }">
+            <a-trigger
+              trigger="click"
+              position="bl"
+              :popup-offset="4"
+              @popup-visible-change="(v: boolean) => { if (!v) saveInlineTags(record); }"
+            >
+              <div class="flex cursor-pointer items-center gap-[4px]">
+                <MsTagGroup :tag-list="record.tags" type="primary" theme="outline" show-table />
+                <MsIcon
+                  type="icon-icon_edit_outlined"
+                  class="text-[var(--color-text-4)] hover:text-[rgb(var(--primary-5))]"
+                  :size="14"
+                />
+              </div>
+              <template #content>
+                <div class="w-[280px] rounded bg-white p-[12px] shadow-lg">
+                  <div class="mb-[8px] text-[13px] text-[var(--color-text-2)]">{{
+                    t('caseManagement.featureCase.tableColumnTag')
+                  }}</div>
+                  <MsTagsInput v-model:model-value="record.editTags" allow-clear />
+                </div>
+              </template>
+            </a-trigger>
+          </template>
           <template #reviewStatus="{ record }">
             <MsIcon
               :type="statusIconMap[record.reviewStatus]?.icon || ''"
@@ -1040,6 +1065,35 @@
    * 处理更新用例参数
    * @param detailResult 详情字段
    */
+  /**
+   * 行内保存标签
+   */
+  async function saveInlineTags(record: any) {
+    // 对比原始标签和编辑后的标签
+    const origNames = (record.tags || []).map((tag: any) => tag.name || tag);
+    const newTags = record.editTags || [];
+    if (JSON.stringify(origNames.sort()) === JSON.stringify([...newTags].sort())) return; // 无变化
+    try {
+      const detailResult = await getCaseDetail(record.id);
+      const params = {
+        request: {
+          ...detailResult,
+          tags: newTags,
+          customFields: getCustomMaps(detailResult),
+        },
+        fileList: [],
+      };
+      await updateCaseRequest(params);
+      // 更新本地显示
+      record.tags = newTags.map((item: string, i: number) => ({ id: `${record.id}-${i}`, name: item }));
+      Message.success(t('common.updateSuccess'));
+    } catch (error) {
+      // 回滚编辑
+      record.editTags = origNames;
+      console.error(error);
+    }
+  }
+
   function getUpdateParams(detailResult: CaseManagementTable, name: string) {
     return {
       request: {
@@ -1100,6 +1154,7 @@
             name: item,
           };
         }),
+        editTags: [...(record.tags || [])],
         visible: false,
         showModuleTree: false,
         caseLevel: getCaseLevels(record.customFields),
