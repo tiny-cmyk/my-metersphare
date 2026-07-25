@@ -2280,24 +2280,21 @@
   .inline-tag-display {
     display: flex;
     align-items: center;
-    padding: 2px 0;
-    min-height: 28px;
+    padding: 4px 8px;
+    min-height: 32px;
+    border: 1px solid transparent;
     border-radius: 4px;
+    transition: border-color 0.15s;
     flex-wrap: wrap;
     gap: 4px;
     cursor: pointer;
+    &:hover {
+      border-color: rgb(var(--primary-5));
+    }
   }
   .inline-tag-add {
-    padding: 1px 8px;
     font-size: 12px;
-    border: 1px dashed var(--color-text-4);
-    border-radius: 4px;
     color: var(--color-text-4);
-    opacity: 0;
-    transition: opacity 0.15s;
-  }
-  .inline-tag-display:hover .inline-tag-add {
-    opacity: 1;
   }
   .inline-tag-dropdown {
     padding: 12px;
