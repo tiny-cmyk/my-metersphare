@@ -132,7 +132,7 @@
                 trigger="click"
                 position="bl"
                 :popup-offset="4"
-                @popup-visible-change="(v: boolean) => { if (!v) saveInlineTags(record); }"
+                @popup-visible-change="(v: boolean) => { if (v) refreshProjectTags(); else saveInlineTags(record); }"
               >
                 <div class="inline-tag-display">
                   <template v-if="record.editTags && record.editTags.length">
@@ -147,31 +147,29 @@
                 </div>
                 <template #content>
                   <div class="inline-tag-dropdown">
-                    <div v-if="record.editTags && record.editTags.length" class="inline-tag-list">
-                      <a-tag
-                        v-for="(tag, idx) in record.editTags"
-                        :key="idx"
-                        color="arcoblue"
-                        closable
-                        @close="
-                          () => {
-                            record.editTags.splice(idx, 1);
-                          }
-                        "
+                    <div class="inline-tag-options">
+                      <div
+                        v-for="tag in allProjectTags"
+                        :key="tag"
+                        class="inline-tag-option"
+                        :class="{ selected: record.editTags.includes(tag) }"
+                        @click="toggleTag(record, tag)"
                       >
-                        {{ tag }}
-                      </a-tag>
+                        <span class="inline-tag-check">{{ record.editTags.includes(tag) ? '✓' : '' }}</span>
+                        <a-tag color="arcoblue" size="small">{{ tag }}</a-tag>
+                      </div>
+                      <div v-if="!allProjectTags.length" class="inline-tag-empty">暂无可选标签</div>
                     </div>
-                    <div v-else class="inline-tag-empty">暂无标签</div>
-                    <a-divider :margin="8" />
+                    <a-divider :margin="6" />
                     <a-input
                       size="small"
-                      placeholder="输入标签名，回车添加"
+                      placeholder="输入新标签，回车创建"
                       allow-clear
                       @press-enter="(e: Event) => {
                         const val = (e.target as HTMLInputElement).value.trim();
                         if (val && !record.editTags.includes(val)) {
                           record.editTags.push(val);
+                          if (!allProjectTags.includes(val)) allProjectTags.push(val);
                           (e.target as HTMLInputElement).value = '';
                         }
                       }"
@@ -1191,6 +1189,21 @@
     },
     updateCaseName
   );
+
+  // ===== 标签行内编辑 =====
+  const allProjectTags = ref<string[]>([]);
+  function refreshProjectTags() {
+    const tagSet = new Set<string>();
+    (propsRes.value.data || []).forEach((row: any) => {
+      (row.editTags || []).forEach((tag: string) => tagSet.add(tag));
+    });
+    allProjectTags.value = [...tagSet].sort();
+  }
+  function toggleTag(record: any, tag: string) {
+    const idx = record.editTags.indexOf(tag);
+    if (idx >= 0) record.editTags.splice(idx, 1);
+    else record.editTags.push(tag);
+  }
 
   const hasUpdatePermission = computed(() => hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE']));
 
@@ -2297,19 +2310,47 @@
     color: var(--color-text-4);
   }
   .inline-tag-dropdown {
-    padding: 12px;
-    width: 240px;
+    overflow-y: auto;
+    padding: 8px 0;
+    width: 200px;
+    max-height: 280px;
     border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+    :deep(.arco-divider) {
+      margin: 6px 0;
+    }
+    :deep(.arco-input-wrapper) {
+      margin: 0 8px;
+      width: calc(100% - 16px);
+    }
   }
-  .inline-tag-list {
+  .inline-tag-options {
+    overflow-y: auto;
+    max-height: 180px;
+  }
+  .inline-tag-option {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+    &:hover {
+      background: var(--color-fill-2);
+    }
+    &.selected {
+      background: rgb(var(--primary-1));
+    }
+  }
+  .inline-tag-check {
+    width: 16px;
+    font-size: 12px;
+    text-align: center;
+    color: rgb(var(--primary-5));
   }
   .inline-tag-empty {
-    padding: 4px 0;
+    padding: 8px 12px;
     font-size: 12px;
     text-align: center;
     color: var(--color-text-4);
