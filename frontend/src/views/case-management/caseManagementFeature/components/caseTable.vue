@@ -143,7 +143,7 @@
                       +{{ record.editTags.length - 2 }}
                     </a-tag>
                   </template>
-                  <span v-else class="inline-tag-placeholder">—</span>
+                  <span v-else class="inline-tag-add">+ 标签</span>
                 </div>
                 <template #content>
                   <div class="inline-tag-dropdown">
@@ -2287,9 +2287,17 @@
     gap: 4px;
     cursor: pointer;
   }
-  .inline-tag-placeholder {
-    font-size: 13px;
+  .inline-tag-add {
+    padding: 1px 8px;
+    font-size: 12px;
+    border: 1px dashed var(--color-text-4);
+    border-radius: 4px;
     color: var(--color-text-4);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .inline-tag-display:hover .inline-tag-add {
+    opacity: 1;
   }
   .inline-tag-dropdown {
     padding: 12px;
