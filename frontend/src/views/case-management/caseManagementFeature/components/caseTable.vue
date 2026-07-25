@@ -136,7 +136,7 @@
               >
                 <div class="inline-tag-display">
                   <template v-if="record.editTags && record.editTags.length">
-                    <a-tag v-for="tag in record.editTags.slice(0, 2)" :key="tag" color="arcoblue" size="small">
+                    <a-tag v-for="tag in record.editTags.slice(0, 2)" :key="tag" color="purple" size="small">
                       {{ tag }}
                     </a-tag>
                     <a-tag v-if="record.editTags.length > 2" color="gray" size="small">
@@ -156,7 +156,7 @@
                         @click="toggleTag(record, tag)"
                       >
                         <span class="inline-tag-check">{{ record.editTags.includes(tag) ? '✓' : '' }}</span>
-                        <a-tag color="arcoblue" size="small">{{ tag }}</a-tag>
+                        <a-tag color="purple" size="small">{{ tag }}</a-tag>
                       </div>
                       <div v-if="!allProjectTags.length" class="inline-tag-empty">暂无可选标签</div>
                     </div>
