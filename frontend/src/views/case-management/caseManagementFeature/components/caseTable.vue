@@ -38,10 +38,12 @@
                 @init-modules="emit('initModules')"
                 @confirm-import="confirmImport"
               />
+              <!-- AI生成用例（暂时隐藏）
               <a-button v-permission="['FUNCTIONAL_CASE:READ+ADD']" class="ml-[12px]" @click="openNotionImport">
                 <template #icon><icon-import /></template>
                 {{ t('AI生成用例') }}
               </a-button>
+              -->
               <a-button class="ml-[12px]" :type="showingAdopted ? 'primary' : 'secondary'" @click="toggleAdoptedFilter">
                 {{
                   showingAdopted
