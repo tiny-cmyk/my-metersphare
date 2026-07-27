@@ -774,6 +774,14 @@
     } else {
       selectNodeExecuteMethod.value = undefined;
     }
+    if (node.data?.isAddCaseBtn) {
+      // 点击"添加用例"按钮节点 → 触发关联用例
+      canShowFloatMenu.value = false;
+      if (hasEditPermission.value && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
+        associateCase();
+      }
+      return;
+    }
     if (node.data?.level === 3 && node.data?.resource?.[0] === caseCountTag) {
       canShowFloatMenu.value = false;
       if (!inInsertingNode.value && hasEditPermission && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
@@ -942,6 +950,22 @@
           priority: node.data.priority === 0 ? 1 : node.data.priority,
           disabled: level !== 2, // 只有测试点能改文本
         };
+        // 在测试点（level 2）的子节点末尾追加"添加用例"按钮节点
+        if (level === 2 && node.children) {
+          node.children.push({
+            data: {
+              id: `add-case-btn-${node.data.id}`,
+              text: '+ 添加用例',
+              resource: ['addCaseBtn'],
+              level: 3,
+              isNew: false,
+              changed: false,
+              disabled: true,
+              isAddCaseBtn: true,
+            },
+            children: [],
+          });
+        }
         return node;
       });
       const template = await minderStore.getMode(MinderKeyEnum.TEST_PLAN_MINDER);
