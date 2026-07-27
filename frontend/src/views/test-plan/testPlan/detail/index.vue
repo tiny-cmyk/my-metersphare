@@ -347,7 +347,6 @@
     () => {
       const { functionalCaseCount, apiCaseCount, apiScenarioCount } = detail.value || {};
       if (
-        (!functionalCaseCount && activeTab.value === 'featureCase') ||
         (!apiCaseCount && activeTab.value === 'apiCase') ||
         (!apiScenarioCount && activeTab.value === 'apiScenario')
       ) {

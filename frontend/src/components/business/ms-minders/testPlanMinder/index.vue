@@ -926,13 +926,7 @@
     try {
       loading.value = true;
       const res = await getPlanMinder(props.planId);
-      // 只保留功能用例节点，隐藏接口用例和场景用例
-      if (res && res.length > 0 && res[0].children) {
-        res[0].children = res[0].children.filter((child: any) => {
-          const nodeType = child.data?.type;
-          return !nodeType || nodeType === 'FUNCTIONAL';
-        });
-      }
+      // 不再过滤节点，保留完整数据结构
       [importJson.value.root] = mapTree(res, (node, path, level) => {
         node.data = {
           ...node.data,
