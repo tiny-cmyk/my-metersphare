@@ -774,10 +774,15 @@
     } else {
       selectNodeExecuteMethod.value = undefined;
     }
-    // 点击"功能用例"（已改文案为"点击添加用例"）直接弹关联
+    // 点击"点击添加用例"（原功能用例 level 1）→ 选中第一个测试集再弹关联
     if (node.data?.level === 1 && node.data?.type === 'FUNCTIONAL') {
       canShowFloatMenu.value = false;
       if (hasEditPermission.value && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
+        // 自动选中第一个测试集子节点（如"基本功能点"）
+        const testSetNode = node.children?.[0];
+        if (testSetNode) {
+          window.minder.select(testSetNode, true);
+        }
         associateCase();
       }
       return;
