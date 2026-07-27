@@ -365,7 +365,7 @@
       {
         value: 'featureCase',
         label: t('menu.caseManagement.featureCase'), // 功能用例
-        show: detail.value.functionalCaseCount,
+        show: true,
       },
       {
         value: 'apiCase',
