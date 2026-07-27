@@ -341,7 +341,7 @@
     }
   }
 
-  const activeTab = ref('featureCase');
+  const activeTab = ref('plan');
   watch(
     () => detail.value,
     () => {
@@ -351,7 +351,7 @@
         (!apiCaseCount && activeTab.value === 'apiCase') ||
         (!apiScenarioCount && activeTab.value === 'apiScenario')
       ) {
-        activeTab.value = 'featureCase';
+        activeTab.value = 'plan';
       }
     }
   );
@@ -359,13 +359,13 @@
     return [
       {
         value: 'plan',
-        label: t('testPlan.plan'), // 测试规划（隐藏，用功能用例 tab 代替）
-        show: false,
+        label: t('testPlan.plan'), // 测试规划
+        show: true,
       },
       {
         value: 'featureCase',
         label: t('menu.caseManagement.featureCase'), // 功能用例
-        show: true,
+        show: detail.value.functionalCaseCount,
       },
       {
         value: 'apiCase',
