@@ -939,7 +939,10 @@
     try {
       loading.value = true;
       const res = await getPlanMinder(props.planId);
-      // 不再过滤节点，保留完整数据结构
+      // 隐藏接口用例和场景用例节点
+      if (res?.[0]?.children) {
+        res[0].children = res[0].children.filter((child: any) => !child.data?.type || child.data.type === 'FUNCTIONAL');
+      }
       [importJson.value.root] = mapTree(res, (node, path, level) => {
         node.data = {
           ...node.data,
