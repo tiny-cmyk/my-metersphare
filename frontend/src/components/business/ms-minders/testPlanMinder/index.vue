@@ -774,6 +774,14 @@
     } else {
       selectNodeExecuteMethod.value = undefined;
     }
+    // 点击"功能用例"（已改文案为"点击添加用例"）直接弹关联
+    if (node.data?.level === 1 && node.data?.type === 'FUNCTIONAL') {
+      canShowFloatMenu.value = false;
+      if (hasEditPermission.value && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
+        associateCase();
+      }
+      return;
+    }
     if (node.data?.level === 3 && node.data?.resource?.[0] === caseCountTag) {
       canShowFloatMenu.value = false;
       if (!inInsertingNode.value && hasEditPermission && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
@@ -936,10 +944,9 @@
           priority: node.data.priority === 0 ? 1 : node.data.priority,
           disabled: level !== 2, // 只有测试点能改文本
         };
-        // 把"用例数"节点文案改为"添加用例"
-        if (level === 3 && node.data?.resource?.[0] === caseCountTag) {
-          const count = node.data.count ?? 0;
-          node.data.text = count > 0 ? `${count}条（点击添加）` : '点击添加用例';
+        // "功能用例"改文案为"点击添加用例"，隐藏"基本功能点"子层
+        if (level === 1 && node.data?.type === 'FUNCTIONAL') {
+          node.data.text = '点击添加用例';
         }
         return node;
       });
