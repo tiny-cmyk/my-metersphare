@@ -34,7 +34,7 @@ export default {
   'ms.minders.serial': '串',
   'ms.minders.parallel': '并',
   'ms.minders.defaultTestSet': '默认测试点',
-  'ms.minders.caseCount': '添加用例',
+  'ms.minders.caseCount': '用例数',
   'ms.minders.resourcePool': '资源池',
   'ms.minders.defaultResourcePool': '默认资源池',
   'ms.minders.env': '环境',
