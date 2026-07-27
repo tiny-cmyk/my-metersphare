@@ -1082,6 +1082,11 @@
       });
     });
   });
+
+  defineExpose({
+    associateCase,
+    openCaseAssociateDrawer,
+  });
 </script>
 
 <style lang="less" scoped>
