@@ -72,7 +72,7 @@ def load_credentials() -> tuple:
 
 ACCESS_KEY, SECRET_KEY = load_credentials()
 
-BASE_URL = "http://10.2.5.250:8081"
+BASE_URL = os.environ.get("MS_BASE_URL", "http://localhost:8081")
 
 # 项目名称 → projectId 映射
 PROJECT_MAP = {
@@ -284,6 +284,27 @@ async def update_case(case_id: str, request: Request):
         return JSONResponse(content=result)
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"请求 MeterSphere 失败：{e}")
+
+
+@app.delete("/api/cases/{case_id}")
+async def delete_case(case_id: str):
+    """删除用例（移到回收站）"""
+    detail = _fetch_case_detail(case_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"用例 {case_id} 不存在")
+
+    url = f"{BASE_URL}/functional/case/delete"
+    body = {
+        "id": case_id,
+        "projectId": detail.get("projectId", ""),
+        "deleteAll": True,
+    }
+    try:
+        resp = requests.post(url, headers=json_headers(), json=body, timeout=30)
+        resp.raise_for_status()
+        return JSONResponse(content=resp.json())
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"删除失败：{e}")
 
 
 @app.post("/api/cases")
