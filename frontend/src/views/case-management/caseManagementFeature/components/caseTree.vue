@@ -124,7 +124,6 @@
     allNames?: string[]; // 所有的模块name列表
     modulesCount?: Record<string, number>; // 模块数量统计对象
     groupKeyword: string; // 搜索关键字
-    projectId?: string; // 跨项目复制时指定目标项目ID
   }>();
 
   const emits = defineEmits([
@@ -202,7 +201,7 @@
   async function initModules(isSetDefaultKey = false) {
     try {
       loading.value = true;
-      const res = await getCaseModuleTree({ projectId: props.projectId || currentProjectId.value });
+      const res = await getCaseModuleTree({ projectId: currentProjectId.value });
       const builtTree = mapTree<ModuleTreeNode>(res, (e) => {
         return {
           ...e,
@@ -440,16 +439,6 @@
   onBeforeMount(() => {
     initModules();
   });
-
-  // 跨项目复制：目标项目切换时重新加载模块树
-  watch(
-    () => props.projectId,
-    (val) => {
-      if (val) {
-        initModules(true);
-      }
-    }
-  );
 
   defineExpose({
     initModules,
