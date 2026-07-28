@@ -19,4 +19,7 @@ public class FunctionalCaseBatchMoveRequest extends FunctionalCaseBatchRequest {
 
     @Schema(description = "源根模块ID，用于计算相对路径（preserveModuleStructure=true 时必填）")
     private String sourceModuleId;
+
+    @Schema(description = "目标项目ID（跨项目复制时使用，为空则复制到当前项目）")
+    private String targetProjectId;
 }

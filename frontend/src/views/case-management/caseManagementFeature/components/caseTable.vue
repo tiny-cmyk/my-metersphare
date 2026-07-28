@@ -376,14 +376,31 @@
         </div> -->
       </div>
     </template>
+    <div v-if="!isMove" class="mb-[12px]">
+      <span class="mr-[8px] text-[13px] text-[var(--color-text-2)]">目标项目</span>
+      <a-select v-model:model-value="copyTargetProjectId" class="w-[200px]" @change="handleTargetProjectChange">
+        <a-option v-for="p in allProjectOptions" :key="p.id" :value="p.id">{{ p.name }}</a-option>
+      </a-select>
+    </div>
     <FeatureCaseTree
-      v-if="showBatchMoveDrawer"
+      v-if="showBatchMoveDrawer && copyTargetProjectId === appStore.currentProjectId"
       ref="caseTreeRef"
       v-model:selected-keys="selectedModuleKeys"
       v-model:group-keyword="groupKeyword"
       :active-folder="props.activeFolder"
       :is-expand-all="true"
       :is-modal="true"
+      @case-node-select="caseNodeSelect"
+    ></FeatureCaseTree>
+    <FeatureCaseTree
+      v-else-if="showBatchMoveDrawer"
+      ref="caseTreeRef"
+      v-model:selected-keys="selectedModuleKeys"
+      v-model:group-keyword="groupKeyword"
+      :active-folder="'all'"
+      :is-expand-all="true"
+      :is-modal="true"
+      :project-id="copyTargetProjectId"
       @case-node-select="caseNodeSelect"
     ></FeatureCaseTree>
   </a-modal>
@@ -576,6 +593,7 @@
     dragSort,
     exportExcelCase,
     exportXMindCase,
+    getAssociatedProjectOptions,
     getCaseDefaultFields,
     getCaseDetail,
     getCaseDownloadFile,
@@ -1596,6 +1614,25 @@
   const batchMoveCaseLoading = ref(false);
 
   const isMove = ref<boolean>(false);
+
+  // ===== 跨项目复制 =====
+  const copyTargetProjectId = ref(appStore.currentProjectId);
+  const allProjectOptions = ref<{ id: string; name: string }[]>([]);
+
+  async function loadProjectOptions() {
+    try {
+      const orgId = appStore.currentOrgId;
+      const res = await getAssociatedProjectOptions(orgId, 'FUNCTIONAL_CASE');
+      allProjectOptions.value = res || [];
+    } catch {
+      allProjectOptions.value = [{ id: appStore.currentProjectId, name: '当前项目' }];
+    }
+  }
+
+  function handleTargetProjectChange() {
+    selectedModuleKeys.value = [];
+  }
+
   // 批量移动和复制
   async function handleCaseMoveOrCopy() {
     batchMoveCaseLoading.value = true;
@@ -1618,11 +1655,16 @@
         groupKeyword.value = '';
         Message.success(t('caseManagement.featureCase.batchMoveSuccess'));
       } else {
-        await batchCopyToModules({
+        const copyParams: any = {
           ...params,
           preserveModuleStructure: true,
           sourceModuleId: props.activeFolder === 'all' ? '' : props.activeFolder,
-        });
+        };
+        // 跨项目复制
+        if (copyTargetProjectId.value !== appStore.currentProjectId) {
+          copyParams.targetProjectId = copyTargetProjectId.value;
+        }
+        await batchCopyToModules(copyParams);
         batchParams.value = cloneDeep(initBatchParams);
         Message.success(t('caseManagement.featureCase.batchCopySuccess'));
       }
@@ -1640,14 +1682,19 @@
     showBatchMoveDrawer.value = false;
     selectedModuleKeys.value = [];
     groupKeyword.value = '';
+    copyTargetProjectId.value = appStore.currentProjectId;
   }
 
   function caseNodeSelect(keys: string[]) {
     selectedModuleKeys.value = keys;
   }
 
-  // 批量移动
+  // 批量移动/复制
   function batchMoveOrCopy() {
+    copyTargetProjectId.value = appStore.currentProjectId;
+    if (!isMove.value) {
+      loadProjectOptions();
+    }
     showBatchMoveDrawer.value = true;
   }
 

@@ -859,8 +859,13 @@ public class FunctionalCaseService {
     public void batchCopyFunctionalCase(FunctionalCaseBatchMoveRequest request, String userId, String organizationId) {
         List<String> ids = doSelectIds(request, request.getProjectId());
         if (CollectionUtils.isNotEmpty(ids)) {
-            //基本信息
-            Map<String, FunctionalCase> functionalCaseMap = copyBaseInfo(request.getProjectId(), ids);
+            // 跨项目复制：targetProjectId 不为空时，复制到目标项目；否则复制到当前项目
+            String sourceProjectId = request.getProjectId();
+            String targetProjectId = StringUtils.isNotBlank(request.getTargetProjectId())
+                    ? request.getTargetProjectId() : sourceProjectId;
+
+            //基本信息（从源项目查询）
+            Map<String, FunctionalCase> functionalCaseMap = copyBaseInfo(sourceProjectId, ids);
             //大字段
             Map<String, FunctionalCaseBlob> functionalCaseBlobMap = copyBlobInfo(ids);
             //附件 本地附件
@@ -870,17 +875,25 @@ public class FunctionalCaseService {
             //自定义字段
             Map<String, List<FunctionalCaseCustomField>> customFieldMap = functionalCaseCustomFieldService.getCustomFieldMapByCaseIds(ids);
 
+            // 跨项目复制时获取目标项目的默认模板
+            String targetTemplateId = null;
+            if (!targetProjectId.equals(sourceProjectId)) {
+                TemplateDTO defaultTemplate = projectTemplateService.getDefaultTemplateDTO(targetProjectId, TemplateScene.FUNCTIONAL.name());
+                targetTemplateId = defaultTemplate.getId();
+            }
+
             // 保留模块层级：预先计算每条用例对应的目标 moduleId
             Map<String, String> targetModuleIdMap = null;
             if (Boolean.TRUE.equals(request.getPreserveModuleStructure())) {
-                List<FunctionalCaseModule> allModules = functionalCaseModuleService.getAllModulesByProjectId(request.getProjectId());
+                // 源项目的模块（用于计算相对路径）
+                List<FunctionalCaseModule> allModules = functionalCaseModuleService.getAllModulesByProjectId(sourceProjectId);
                 Map<String, FunctionalCaseModule> moduleMap = allModules.stream()
                         .collect(Collectors.toMap(FunctionalCaseModule::getId, m -> m));
                 targetModuleIdMap = resolveTargetModuleIds(ids, functionalCaseMap, moduleMap,
-                        request.getSourceModuleId(), request.getModuleId(), request.getProjectId(), userId);
+                        request.getSourceModuleId(), request.getModuleId(), targetProjectId, userId);
             }
 
-            AtomicReference<Long> nextOrder = new AtomicReference<>(getNextOrder(request.getProjectId()));
+            AtomicReference<Long> nextOrder = new AtomicReference<>(getNextOrder(targetProjectId));
 
             List<FunctionalCase> addList = new ArrayList<>();
             List<FunctionalCaseBlob> addBlobList = new ArrayList<>();
@@ -890,6 +903,7 @@ public class FunctionalCaseService {
             Map<FunctionalCase, FunctionalCaseHistoryLogDTO> addLogMap = new HashMap<>();
 
             final Map<String, String> finalTargetModuleIdMap = targetModuleIdMap;
+            final String finalTargetTemplateId = targetTemplateId;
             for (String s : ids) {
                 String id = IDGenerator.nextStr();
                 FunctionalCase functionalCase = functionalCaseMap.get(s);
@@ -905,8 +919,12 @@ public class FunctionalCaseService {
                 Optional.ofNullable(functionalCase).ifPresent(functional -> {
                     functional.setId(id);
                     functional.setRefId(id);
+                    functional.setProjectId(targetProjectId);
                     functional.setModuleId(resolvedModuleId);
-                    functional.setNum(getNextNum(request.getProjectId()));
+                    functional.setNum(getNextNum(targetProjectId));
+                    if (finalTargetTemplateId != null) {
+                        functional.setTemplateId(finalTargetTemplateId);
+                    }
                     functional.setName(getCopyName(functionalCase.getName(), num, functional.getNum()));
                     functional.setReviewStatus(FunctionalCaseReviewStatus.UN_REVIEWED.name());
                     functional.setPos(nextOrder.get());
@@ -967,14 +985,14 @@ public class FunctionalCaseService {
                 functionalCaseCustomFieldService.batchSaveCustomField(subList);
             });
             addFileAssociationMap.entrySet().forEach(entry -> {
-                functionalCaseAttachmentService.association(entry.getValue(), entry.getKey(), userId, FUNCTIONAL_CASE_BATCH_COPY_FILE_LOG_URL, request.getProjectId());
+                functionalCaseAttachmentService.association(entry.getValue(), entry.getKey(), userId, FUNCTIONAL_CASE_BATCH_COPY_FILE_LOG_URL, targetProjectId);
             });
             addLogMap.entrySet().forEach(entry -> {
                 saveAddDataLog(entry.getKey(), new FunctionalCaseHistoryLogDTO(), entry.getValue(), userId, organizationId, OperationLogType.ADD.name(), OperationLogModule.CASE_MANAGEMENT_CASE_CASE);
             });
 
             User user = userMapper.selectByPrimaryKey(userId);
-            functionalCaseNoticeService.batchSendNotice(request.getProjectId(), ids, user, NoticeConstants.Event.CREATE);
+            functionalCaseNoticeService.batchSendNotice(targetProjectId, ids, user, NoticeConstants.Event.CREATE);
 
 
         }
