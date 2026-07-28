@@ -774,19 +774,6 @@
     } else {
       selectNodeExecuteMethod.value = undefined;
     }
-    // 点击"点击添加用例"（原功能用例 level 1）→ 选中第一个测试集再弹关联
-    if (node.data?.level === 1 && node.data?.type === 'FUNCTIONAL') {
-      canShowFloatMenu.value = false;
-      if (hasEditPermission.value && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
-        // 自动选中第一个测试集子节点（如"基本功能点"）
-        const testSetNode = node.children?.[0];
-        if (testSetNode) {
-          window.minder.select(testSetNode, true);
-        }
-        associateCase();
-      }
-      return;
-    }
     if (node.data?.level === 3 && node.data?.resource?.[0] === caseCountTag) {
       canShowFloatMenu.value = false;
       if (!inInsertingNode.value && hasEditPermission && hasAnyPermission(['PROJECT_TEST_PLAN:READ+ASSOCIATION'])) {
@@ -939,10 +926,7 @@
     try {
       loading.value = true;
       const res = await getPlanMinder(props.planId);
-      // 隐藏接口用例和场景用例节点
-      if (res?.[0]?.children) {
-        res[0].children = res[0].children.filter((child: any) => !child.data?.type || child.data.type === 'FUNCTIONAL');
-      }
+      // 注意：不能过滤 res 的 children，否则保存时会把被过滤的节点当作已删除提交给后端
       [importJson.value.root] = mapTree(res, (node, path, level) => {
         node.data = {
           ...node.data,
@@ -952,10 +936,6 @@
           priority: node.data.priority === 0 ? 1 : node.data.priority,
           disabled: level !== 2, // 只有测试点能改文本
         };
-        // "功能用例"改文案为"点击添加用例"，隐藏"基本功能点"子层
-        if (level === 1 && node.data?.type === 'FUNCTIONAL') {
-          node.data.text = '点击添加用例';
-        }
         return node;
       });
       const template = await minderStore.getMode(MinderKeyEnum.TEST_PLAN_MINDER);
