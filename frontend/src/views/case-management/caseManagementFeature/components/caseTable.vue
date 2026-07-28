@@ -593,7 +593,7 @@
     dragSort,
     exportExcelCase,
     exportXMindCase,
-    getAssociatedProjectOptions,
+    getAllProjectOptions,
     getCaseDefaultFields,
     getCaseDetail,
     getCaseDownloadFile,
@@ -1622,8 +1622,12 @@
   async function loadProjectOptions() {
     try {
       const orgId = appStore.currentOrgId;
-      const res = await getAssociatedProjectOptions(orgId, 'FUNCTIONAL_CASE');
-      allProjectOptions.value = res || [];
+      if (!orgId) {
+        allProjectOptions.value = [{ id: appStore.currentProjectId, name: '当前项目' }];
+        return;
+      }
+      const res = await getAllProjectOptions(orgId);
+      allProjectOptions.value = (res || []).length > 0 ? res : [{ id: appStore.currentProjectId, name: '当前项目' }];
     } catch {
       allProjectOptions.value = [{ id: appStore.currentProjectId, name: '当前项目' }];
     }
