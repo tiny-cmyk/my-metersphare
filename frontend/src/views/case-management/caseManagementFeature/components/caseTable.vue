@@ -376,14 +376,23 @@
         </div> -->
       </div>
     </template>
+    <div v-if="!isMove" class="mb-[12px]">
+      <span class="mr-[8px] text-[13px] text-[var(--color-text-2)]">{{
+        t('caseManagement.featureCase.projectName')
+      }}</span>
+      <a-select v-model:model-value="copyTargetProjectId" class="w-[200px]" @change="handleTargetProjectChange">
+        <a-option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</a-option>
+      </a-select>
+    </div>
     <FeatureCaseTree
       v-if="showBatchMoveDrawer"
       ref="caseTreeRef"
       v-model:selected-keys="selectedModuleKeys"
       v-model:group-keyword="groupKeyword"
-      :active-folder="props.activeFolder"
+      :active-folder="isMove || copyTargetProjectId === currentProjectId ? props.activeFolder : 'all'"
       :is-expand-all="true"
       :is-modal="true"
+      :project-id="isMove ? undefined : copyTargetProjectId"
       @case-node-select="caseNodeSelect"
     ></FeatureCaseTree>
   </a-modal>
@@ -576,6 +585,7 @@
     dragSort,
     exportExcelCase,
     exportXMindCase,
+    getAssociatedProjectOptions,
     getCaseDefaultFields,
     getCaseDetail,
     getCaseDownloadFile,
@@ -621,6 +631,7 @@
   import { ModuleTreeNode } from '@/models/common';
   import { FilterType, OperatorEnum, ViewTypeEnum } from '@/enums/advancedFilterEnum';
   import { CacheTabTypeEnum } from '@/enums/cacheTabEnum';
+  import { CaseLinkEnum } from '@/enums/caseEnum';
   import { MinderKeyEnum } from '@/enums/minderEnum';
   import { CaseManagementRouteEnum, RouteEnum } from '@/enums/routeEnum';
   import { ColumnEditTypeEnum, TableKeyEnum } from '@/enums/tableEnum';
@@ -1596,6 +1607,21 @@
   const batchMoveCaseLoading = ref(false);
 
   const isMove = ref<boolean>(false);
+  const copyTargetProjectId = ref(appStore.currentProjectId);
+  const projectOptions = ref<{ id: string; name: string }[]>([]);
+
+  async function loadProjectOptions() {
+    try {
+      const res = await getAssociatedProjectOptions(appStore.currentOrgId, CaseLinkEnum.FUNCTIONAL);
+      projectOptions.value = res || [];
+    } catch {
+      projectOptions.value = [{ id: appStore.currentProjectId, name: t('caseManagement.featureCase.projectName') }];
+    }
+  }
+
+  function handleTargetProjectChange() {
+    selectedModuleKeys.value = [];
+  }
 
   // 批量移动和复制
   async function handleCaseMoveOrCopy() {
@@ -1619,11 +1645,15 @@
         groupKeyword.value = '';
         Message.success(t('caseManagement.featureCase.batchMoveSuccess'));
       } else {
-        await batchCopyToModules({
+        const copyParams: Record<string, any> = {
           ...params,
           preserveModuleStructure: true,
           sourceModuleId: props.activeFolder === 'all' ? '' : props.activeFolder,
-        });
+        };
+        if (copyTargetProjectId.value !== currentProjectId.value) {
+          copyParams.targetProjectId = copyTargetProjectId.value;
+        }
+        await batchCopyToModules(copyParams as any);
         batchParams.value = cloneDeep(initBatchParams);
         Message.success(t('caseManagement.featureCase.batchCopySuccess'));
       }
@@ -1641,6 +1671,7 @@
     showBatchMoveDrawer.value = false;
     selectedModuleKeys.value = [];
     groupKeyword.value = '';
+    copyTargetProjectId.value = currentProjectId.value;
   }
 
   function caseNodeSelect(keys: string[]) {
@@ -1649,6 +1680,10 @@
 
   // 批量移动/复制
   function batchMoveOrCopy() {
+    copyTargetProjectId.value = currentProjectId.value;
+    if (!isMove.value) {
+      loadProjectOptions();
+    }
     showBatchMoveDrawer.value = true;
   }
 

@@ -161,6 +161,7 @@ export interface BatchMoveOrCopyType {
   condition: Record<string, any>;
   preserveModuleStructure?: boolean;
   sourceModuleId?: string;
+  targetProjectId?: string;
 }
 export type CaseEditType = 'STEP' | 'TEXT';
 // 创建或者更新

@@ -502,9 +502,6 @@ export function getChangeHistoryList(data: TableQueryParams) {
 export function getAssociatedProjectOptions(orgId: string, module: string) {
   return MSR.get<ProjectListItem[]>({ url: `${associatedProjectOptionsUrl}/${orgId}/${module}` });
 }
-export function getAllProjectOptions(orgId: string) {
-  return MSR.get<ProjectListItem[]>({ url: `${associatedProjectOptionsUrl}/${orgId}` });
-}
 
 // 获取已关联测试计划列表
 export function getLinkedCaseTestPlanList(data: TableQueryParams) {
