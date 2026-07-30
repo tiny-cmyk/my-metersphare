@@ -9,6 +9,7 @@ import io.metersphere.functional.mapper.ExtFunctionalCaseCustomFieldMapper;
 import io.metersphere.functional.mapper.FunctionalCaseCustomFieldMapper;
 import jakarta.annotation.Resource;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,9 @@ public class FunctionalCaseCustomFieldService {
      */
     public void saveCustomField(String caseId, List<CaseCustomFieldDTO> customFields) {
         customFields.forEach(custom -> {
+            if (StringUtils.isBlank(custom.getValue())) {
+                return;
+            }
             FunctionalCaseCustomField customField = new FunctionalCaseCustomField();
             customField.setCaseId(caseId);
             customField.setFieldId(custom.getFieldId());
@@ -98,6 +102,13 @@ public class FunctionalCaseCustomFieldService {
 
     private void updateField(String caseId, List<CaseCustomFieldDTO> updateFields) {
         updateFields.forEach(custom -> {
+            if (StringUtils.isBlank(custom.getValue())) {
+                // value 为空时删除记录，避免 updateByPrimaryKeySelective 生成无效 SQL
+                FunctionalCaseCustomFieldExample delExample = new FunctionalCaseCustomFieldExample();
+                delExample.createCriteria().andCaseIdEqualTo(caseId).andFieldIdEqualTo(custom.getFieldId());
+                functionalCaseCustomFieldMapper.deleteByExample(delExample);
+                return;
+            }
             FunctionalCaseCustomField customField = new FunctionalCaseCustomField();
             customField.setCaseId(caseId);
             customField.setFieldId(custom.getFieldId());
