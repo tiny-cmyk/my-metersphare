@@ -140,6 +140,12 @@ export function getCaseLevels(customFields: CustomAttributes[]): CaseLevel {
   return caseLevelItem?.options.find((it: any) => it.value === caseLevelItem.defaultValue)?.text as CaseLevel;
 }
 
+// 返回是否自动化
+export function getAutomationStatus(customFields: CustomAttributes[]): string {
+  const item = (customFields || []).find((it: any) => it.internal && it.internalFieldKey === 'automation_status');
+  return item?.defaultValue || '';
+}
+
 // 获取对应模块name
 export function getModules(moduleIds: string, treeData: ModuleTreeNode[]) {
   const modules = findNodePathByKey(treeData, moduleIds, undefined, 'id');

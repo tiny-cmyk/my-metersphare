@@ -19,6 +19,15 @@ public enum DefaultFunctionalCustomField {
                     getNewOption("P2", "P2", 3),
                     getNewOption("P3", "P3", 4)
             )
+    ),
+    AUTOMATION_STATUS("automation_status", CustomFieldType.SELECT,
+            Arrays.asList(
+                    getNewOption("automatable", "可自动化", 1),
+                    getNewOption("automated", "已自动化", 2),
+                    getNewOption("manual", "需手工", 3),
+                    getNewOption("to_be_confirmed", "待确认", 4),
+                    getNewOption("not_applicable", "不涉及", 5)
+            )
     );
 
     private String name;

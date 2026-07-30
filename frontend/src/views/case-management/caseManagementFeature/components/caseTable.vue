@@ -123,6 +123,26 @@
           <template #[FilterSlotNameEnum.CASE_MANAGEMENT_CASE_LEVEL]="{ filterContent }">
             <caseLevel :case-level="filterContent.text" />
           </template>
+          <!-- 是否自动化 -->
+          <template #automationStatus="{ record }">
+            <a-select
+              v-model:model-value="record.automationStatus"
+              :placeholder="t('common.pleaseSelect')"
+              class="param-input w-full"
+              allow-clear
+              @click.stop
+              @change="() => handleAutomationStatusChange(record)"
+            >
+              <template #label>
+                <span class="text-[var(--color-text-2)]">
+                  <AutomationStatus :status="record.automationStatus" />
+                </span>
+              </template>
+              <a-option v-for="item of automationStatusList" :key="item.value" :value="item.value">
+                <AutomationStatus :status="item.value" />
+              </a-option>
+            </a-select>
+          </template>
           <!-- 执行结果 -->
           <template #[FilterSlotNameEnum.CASE_MANAGEMENT_EXECUTE_RESULT]="{ filterContent }">
             <ExecuteStatusTag :execute-result="filterContent.value" />
@@ -565,6 +585,7 @@
   import MsTableMoreAction from '@/components/pure/ms-table-more-action/index.vue';
   import { ActionsItem } from '@/components/pure/ms-table-more-action/types';
   import MsTagsInput from '@/components/pure/ms-tags-input/index.vue';
+  import AutomationStatus from '@/components/business/ms-case-associate/automationStatus.vue';
   import caseLevel from '@/components/business/ms-case-associate/caseLevel.vue';
   import ExecuteStatusTag from '@/components/business/ms-case-associate/executeResult.vue';
   import MsFeatureCaseMinder from '@/components/business/ms-minders/featureCaseMinder/index.vue';
@@ -638,7 +659,7 @@
   import { FilterRemoteMethodsEnum, FilterSlotNameEnum } from '@/enums/tableFilterEnum';
   import { WorkNavValueEnum } from '@/enums/workbenchEnum';
 
-  import { executionResultMap, getCaseLevels, getTableFields, statusIconMap } from './utils';
+  import { executionResultMap, getAutomationStatus, getCaseLevels, getTableFields, statusIconMap } from './utils';
   import { LabelValue } from '@arco-design/web-vue/es/tree-select/interface';
 
   const MsAIDrawer = defineAsyncComponent(() => import('@/components/business/ms-ai-drawer/index.vue'));
@@ -798,6 +819,19 @@
       filterConfig: {
         options: [],
         filterSlotName: FilterSlotNameEnum.CASE_MANAGEMENT_CASE_LEVEL,
+      },
+      showInTable: true,
+      width: 150,
+      showDrag: true,
+    },
+  ];
+  const automationStatusColumn: MsTableColumn = [
+    {
+      title: '是否自动化',
+      slotName: 'automationStatus',
+      dataIndex: 'automationStatus',
+      filterConfig: {
+        options: [],
       },
       showInTable: true,
       width: 150,
@@ -1198,6 +1232,7 @@
         visible: false,
         showModuleTree: false,
         caseLevel: getCaseLevels(record.customFields),
+        automationStatus: getAutomationStatus(record.customFields),
       };
     },
     updateCaseName
@@ -1298,9 +1333,13 @@
   }
 
   const caseLevelFields = ref<Record<string, any>>({});
+  const automationStatusFields = ref<Record<string, any>>({});
 
   const caseLevelList = computed(() => {
     return caseLevelFields.value?.options || [];
+  });
+  const automationStatusList = computed(() => {
+    return automationStatusFields.value?.options || [];
   });
 
   async function getLoadListParams() {
@@ -1941,9 +1980,17 @@
       caseLevelColumn[0].filterConfig.options = cloneDeep(unref(caseLevelFields.value?.options)) || [];
     }
 
+    automationStatusFields.value = result.customFields.find(
+      (item: any) => item.internal && item.internalFieldKey === 'automation_status'
+    );
+    if (automationStatusColumn[0].filterConfig?.options) {
+      automationStatusColumn[0].filterConfig.options = cloneDeep(unref(automationStatusFields.value?.options)) || [];
+    }
+
     fullColumns = [
       ...firstStaticColumn,
       ...caseLevelColumn,
+      ...automationStatusColumn,
       ...lastStaticColumn,
       ...customFieldsColumns,
       ...operationColumn,
@@ -2069,6 +2116,40 @@
           return {
             fieldId: item.fieldId,
             value: record.caseLevel,
+          };
+        }
+        return {
+          fieldId: item.fieldId,
+          value: Array.isArray(item.defaultValue) ? JSON.stringify(item.defaultValue) : item.defaultValue,
+        };
+      });
+      const params = {
+        request: {
+          ...detailResult,
+          lastExecuteResult: record.lastExecuteResult,
+          customFields: customFieldsList,
+        },
+        fileList: [],
+      };
+      await updateCaseRequest(params);
+      initData();
+      Message.success(t('common.updateSuccess'));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  }
+
+  // 更新是否自动化
+  async function handleAutomationStatusChange(record: any) {
+    try {
+      const detailResult = await getCaseDetail(record.id);
+      const { customFields } = detailResult;
+      const customFieldsList = customFields.map((item: any) => {
+        if (item.internal && item.internalFieldKey === 'automation_status') {
+          return {
+            fieldId: item.fieldId,
+            value: record.automationStatus || '',
           };
         }
         return {
