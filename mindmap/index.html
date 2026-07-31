@@ -1194,15 +1194,7 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
             // 点击选中用例（支持 Enter 新增 / Delete 删除）
             caseG.addEventListener('click', (e) => {
               e.stopPropagation();
-              // 清除旧选中
-              if (treeSelectedCase && treeSelectedCase.element) {
-                const oldRect = treeSelectedCase.element.querySelector('rect');
-                if (oldRect) { oldRect.setAttribute('stroke', '#E8E8E8'); oldRect.setAttribute('stroke-width', '1'); }
-              }
-              // 设置新选中
-              treeSelectedCase = { caseObj: c, moduleId: node.id, index: ci, element: caseG };
-              caseRect.setAttribute('stroke', '#4096FF');
-              caseRect.setAttribute('stroke-width', '2.5');
+              treeSelectNode({ caseObj: c, moduleId: node.id, index: ci, field: 'case', element: caseG }, '#4096FF');
             });
 
             nodeLayer.appendChild(caseG);
@@ -1259,6 +1251,11 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                 sG.addEventListener('mouseenter', (e) => showTooltip(e, stepText));
                 sG.addEventListener('mousemove',  (e) => moveTooltip(e));
                 sG.addEventListener('mouseleave', hideTooltip);
+                // 点击选中步骤
+                sG.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  treeSelectNode({ caseObj: c, moduleId: node.id, index: ci, field: 'step', stepIdx: si, element: sG }, '#91CAFF');
+                });
                 sG.addEventListener('dblclick', (e) => {
                   e.stopPropagation();
                   treeInlineEdit(sG, stepText, '#91CAFF', async (val) => {
@@ -1285,6 +1282,11 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                   rG.addEventListener('mouseenter', (e) => showTooltip(e, resultText));
                   rG.addEventListener('mousemove',  (e) => moveTooltip(e));
                   rG.addEventListener('mouseleave', hideTooltip);
+                  // 点击选中预期结果
+                  rG.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    treeSelectNode({ caseObj: c, moduleId: node.id, index: ci, field: 'result', stepIdx: si, element: rG }, '#D3ADF7');
+                  });
                   rG.addEventListener('dblclick', (e) => {
                     e.stopPropagation();
                     treeInlineEdit(rG, resultText, '#D3ADF7', async (val) => {
@@ -1315,6 +1317,26 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
 
   if (resetScale) applyScale(1.0, false);
   else applyScale(scale, false);
+}
+
+/** 树视图中选中节点（统一处理选中/取消选中） */
+function treeSelectNode(nodeInfo, strokeColor) {
+  // 清除旧选中
+  if (treeSelectedCase && treeSelectedCase.element) {
+    const oldRect = treeSelectedCase.element.querySelector('rect');
+    if (oldRect) {
+      oldRect.setAttribute('stroke', oldRect.dataset.origStroke || '#E8E8E8');
+      oldRect.setAttribute('stroke-width', '1');
+    }
+  }
+  // 设置新选中
+  treeSelectedCase = nodeInfo;
+  const rect = nodeInfo.element.querySelector('rect');
+  if (rect) {
+    rect.dataset.origStroke = rect.getAttribute('stroke');
+    rect.setAttribute('stroke', strokeColor || '#4096FF');
+    rect.setAttribute('stroke-width', '2.5');
+  }
 }
 
 /** 模块树视图中的用例拖拽排序 */
@@ -2066,34 +2088,83 @@ document.addEventListener('keydown', async (e) => {
   const active = document.activeElement;
   if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
 
-  const { caseObj, moduleId, index } = treeSelectedCase;
+  const { caseObj, moduleId, index, field, stepIdx } = treeSelectedCase;
 
   if (e.key === 'Enter') {
     e.preventDefault();
     try {
-      const result = await createNewCase('新用例');
-      if (result && result.data) {
-        const newId = result.data.id || result.data;
-        const projectId = PROJECT_MAP_JS[currentProject];
-        if (projectId && caseObj.id) {
-          try {
-            await apiFetch('/api/cases/drag-sort', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ projectId, moveId: newId, targetId: caseObj.id, moveMode: 'AFTER' }),
-            });
-          } catch (_) {}
+      if (!field || field === 'case') {
+        // 用例节点 → 新增同级用例
+        const savedModuleId = currentModuleId;
+        currentModuleId = moduleId;  // 确保在正确的模块下创建
+        const result = await createNewCase('新用例');
+        currentModuleId = savedModuleId;
+        if (result && result.data) {
+          const newId = result.data.id || result.data;
+          const projectId = PROJECT_MAP_JS[currentProject];
+          if (projectId && caseObj.id) {
+            try {
+              await apiFetch('/api/cases/drag-sort', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId, moveId: newId, targetId: caseObj.id, moveMode: 'AFTER' }),
+              });
+            } catch (_) {}
+          }
         }
+        treeSelectedCase = null;
+        delete expandedCasesCache[moduleId];
+        await loadModuleCasesInline(moduleId);
+      } else if (field === 'step') {
+        // 步骤节点 → 在当前步骤后插入新步骤
+        const arr = parseSteps(caseObj.steps);
+        const newStep = { id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' };
+        arr.splice(stepIdx + 1, 0, newStep);
+        arr.forEach((s, i) => { s.id = String(i + 1); s.num = i + 1; });
+        await patchCaseSteps(caseObj, arr);
+        treeSelectedCase = null;
+        if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
+      } else if (field === 'result') {
+        // 预期结果 → 在当前步骤后插入新步骤
+        const arr = parseSteps(caseObj.steps);
+        arr.push({ id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' });
+        await patchCaseSteps(caseObj, arr);
+        treeSelectedCase = null;
+        if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
       }
-      treeSelectedCase = null;
-      delete expandedCasesCache[moduleId];
-      await loadModuleCasesInline(moduleId);
     } catch (err) { alert('新增失败：' + err.message); }
     return;
   }
 
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
+    if (field === 'step') {
+      // 删除步骤
+      const ok = await showConfirm('确定删除该步骤？');
+      if (!ok) return;
+      try {
+        const arr = parseSteps(caseObj.steps);
+        arr.splice(stepIdx, 1);
+        arr.forEach((s, i) => { s.id = String(i + 1); s.num = i + 1; });
+        await patchCaseSteps(caseObj, arr);
+        treeSelectedCase = null;
+        if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
+      } catch (err) { alert('删除失败：' + err.message); }
+      return;
+    }
+    if (field === 'result') {
+      // 删除预期结果
+      const ok = await showConfirm('确定删除该预期结果？');
+      if (!ok) return;
+      try {
+        const arr = parseSteps(caseObj.steps);
+        if (arr[stepIdx]) { arr[stepIdx].result = ''; }
+        await patchCaseSteps(caseObj, arr);
+        treeSelectedCase = null;
+        if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
+      } catch (err) { alert('删除失败：' + err.message); }
+      return;
+    }
     const ok = await showConfirm(`确定删除用例「${caseObj.name}」？`);
     if (!ok) return;
     try {
@@ -2108,10 +2179,7 @@ document.addEventListener('keydown', async (e) => {
 
 // 点击画布空白处取消树视图选中
 $svg.addEventListener('click', () => {
-  if (treeSelectedCase && treeSelectedCase.element) {
-    const oldRect = treeSelectedCase.element.querySelector('rect');
-    if (oldRect) { oldRect.setAttribute('stroke', '#E8E8E8'); oldRect.setAttribute('stroke-width', '1'); }
-  }
+  if (treeSelectedCase) treeSelectNode({ element: null }, '');
   treeSelectedCase = null;
 });
 
