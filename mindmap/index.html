@@ -464,6 +464,8 @@ let currentCases = [];
 let scale = 1.0;
 let autoRefreshTimer = null;
 let lastRetryAction = null;  // 用于"重试"按钮
+let cachedModuleTree = [];   // 缓存模块树数据（用于查找子模块）
+let expandedModules = new Set();  // 模块地图中展开的模块 ID
 
 /* ════════════════════════════════════════════════════════
    DOM 引用
@@ -818,6 +820,157 @@ function drawModuleNode(parent, name, cy) {
   return { right: x + MODULE_W, cy };
 }
 
+/** 在缓存的模块树中按 ID 查找节点 */
+function findModuleById(nodes, id) {
+  if (!nodes) return null;
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    const found = findModuleById(n.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * 渲染模块结构脑图（当选中的模块有子模块但无直属用例时）
+ * 展示子模块节点，点击后加载该子模块的用例
+ */
+function renderModuleMap(parentModule, childModules, resetScale = true) {
+  clearSelection();
+  while ($svg.firstChild) $svg.removeChild($svg.firstChild);
+  document.querySelectorAll('.inline-editor').forEach(el => el.remove());
+
+  if (!childModules || childModules.length === 0) return;
+
+  $canvasScroll.style.display = '';
+  $placeholder.style.display = 'none';
+
+  // Flatten visible tree based on expandedModules
+  const visibleNodes = [];
+  function collectVisible(nodes, depth) {
+    nodes.forEach(node => {
+      visibleNodes.push({ ...node, depth });
+      if (expandedModules.has(node.id) && node.children && node.children.length > 0) {
+        collectVisible(node.children, depth + 1);
+      }
+    });
+  }
+  collectVisible(childModules, 1);
+
+  $caseCount.textContent = `${visibleNodes.length} 个模块`;
+
+  const ROW_H = 48;
+  const GAP = 8;
+  const BASE_W = 200;
+  const INDENT = 24;
+  const maxDepth = Math.max(...visibleNodes.map(n => n.depth));
+  const maxW = BASE_W + maxDepth * INDENT;
+
+  const totalH = visibleNodes.length * ROW_H + (visibleNodes.length - 1) * GAP;
+  const svgW = X_MODULE + MODULE_W + H_GAP + maxW + PADDING * 2;
+  const svgH = PADDING * 2 + totalH;
+
+  $svg.setAttribute('width', svgW);
+  $svg.setAttribute('height', svgH);
+  $svg.style.width  = svgW + 'px';
+  $svg.style.height = svgH + 'px';
+
+  const lineLayer = svgEl('g', { id: 'lines' });
+  $svg.appendChild(lineLayer);
+  const nodeLayer = svgEl('g', { id: 'nodes' });
+  $svg.appendChild(nodeLayer);
+
+  // 父模块根节点
+  const rootCY = PADDING + totalH / 2;
+  const rootAnchors = drawModuleNode(nodeLayer, parentModule.name || currentModuleName, rootCY);
+
+  // 子模块节点（多层级展开）
+  const childX = X_MODULE + MODULE_W + H_GAP;
+  visibleNodes.forEach((child, i) => {
+    const cy = PADDING + i * (ROW_H + GAP) + ROW_H / 2;
+    const indent = (child.depth - 1) * INDENT;
+    const nodeX = childX + indent;
+    const nodeW = BASE_W;
+    const hasChildren = child.children && child.children.length > 0;
+    const isExpanded = expandedModules.has(child.id);
+    const isLeaf = !hasChildren;
+
+    const g = svgEl('g', { style: 'cursor:pointer' });
+
+    const rect = svgEl('rect', {
+      x: nodeX, y: cy - ROW_H / 2 + 4, width: nodeW, height: ROW_H - 8,
+      rx: 6, fill: isLeaf ? '#fff' : (isExpanded ? '#E6F4FF' : '#F0F5FF'),
+      stroke: isLeaf ? '#D9D9D9' : '#4096FF', 'stroke-width': 1.5,
+      'pointer-events': 'all',
+    });
+    g.appendChild(rect);
+
+    // Toggle icon for non-leaf
+    if (hasChildren) {
+      const toggleTxt = svgEl('text', {
+        x: nodeX + 14, y: cy,
+        'dominant-baseline': 'middle', 'text-anchor': 'middle',
+        'font-size': 10, fill: '#4096FF', 'pointer-events': 'none',
+      });
+      toggleTxt.textContent = isExpanded ? '▼' : '▶';
+      g.appendChild(toggleTxt);
+    }
+
+    const label = truncateByPixel(child.name || '', nodeW - (hasChildren ? 40 : 16));
+    const txt = svgEl('text', {
+      x: nodeX + (hasChildren ? 26 : 12), y: cy,
+      'dominant-baseline': 'middle',
+      'font-size': 13, fill: isLeaf ? '#333' : '#1677FF',
+      'font-weight': hasChildren ? 600 : 400,
+      'pointer-events': 'none',
+    });
+    txt.textContent = label;
+    g.appendChild(txt);
+
+    // Case count badge for leaf modules
+    if (isLeaf && child.count !== undefined) {
+      const countTxt = svgEl('text', {
+        x: nodeX + nodeW - 10, y: cy,
+        'dominant-baseline': 'middle', 'text-anchor': 'end',
+        'font-size': 11, fill: '#8C8C8C', 'pointer-events': 'none',
+      });
+      countTxt.textContent = child.count || '';
+      g.appendChild(countTxt);
+    }
+
+    const defaultFill = isLeaf ? '#fff' : (isExpanded ? '#E6F4FF' : '#F0F5FF');
+    g.addEventListener('mouseenter', () => rect.setAttribute('fill', isLeaf ? '#FAFAFA' : '#E6F4FF'));
+    g.addEventListener('mouseleave', () => rect.setAttribute('fill', defaultFill));
+
+    // tooltip
+    g.addEventListener('mouseenter', (e) => showTooltip(e, child.name));
+    g.addEventListener('mousemove',  (e) => moveTooltip(e));
+    g.addEventListener('mouseleave', hideTooltip);
+
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (hasChildren) {
+        // Toggle expand/collapse
+        if (isExpanded) expandedModules.delete(child.id);
+        else expandedModules.add(child.id);
+        renderModuleMap(parentModule, childModules, false);
+      } else {
+        // Leaf module → load cases
+        loadCases(child.id, child.name);
+        expandAndClickModule(child.id);
+      }
+    });
+
+    nodeLayer.appendChild(g);
+
+    // 连接线：连到根节点
+    drawConnector(lineLayer, rootAnchors.right, rootAnchors.cy, nodeX, cy);
+  });
+
+  if (resetScale) applyScale(1.0, false);
+  else applyScale(scale, false);
+}
+
 /**
  * 渲染整个脑图
  * @param {Array}  cases      - 用例数组
@@ -890,6 +1043,34 @@ function renderMindmap(cases, moduleName, resetScale = true) {
     // 用例节点可选中：+ → 新增步骤，双击 → 编辑用例名称
     bindEditDblClick(caseG, c, 'caseName', -1, c.name || '', caseCoreAnchors);
     bindSelectable(caseG, c, 'case', -1, caseCoreAnchors);
+
+    // ── Drag handle (⋮⋮) ──
+    const dragHandleG = svgEl('g', { class: 'drag-handle', style: 'cursor: grab; opacity: 0;' });
+    const dhX = X_CASE - 20;
+    const dhText = svgEl('text', {
+      x: dhX, y: caseCY,
+      'text-anchor': 'middle', 'dominant-baseline': 'middle',
+      'font-size': 14, fill: '#BFBFBF', 'pointer-events': 'none',
+    });
+    dhText.textContent = '⋮⋮';
+    dragHandleG.appendChild(svgEl('rect', {
+      x: dhX - 10, y: caseCY - 14, width: 20, height: 28,
+      fill: 'transparent', 'pointer-events': 'all',
+    }));
+    dragHandleG.appendChild(dhText);
+    caseG.appendChild(dragHandleG);
+
+    // Show/hide drag handle on case hover
+    caseG.addEventListener('mouseenter', () => { if (!isReadonly) dragHandleG.style.opacity = '1'; });
+    caseG.addEventListener('mouseleave', () => { dragHandleG.style.opacity = '0'; });
+
+    // Drag start
+    dragHandleG.addEventListener('mousedown', (e) => {
+      if (isReadonly) return;
+      e.preventDefault();
+      e.stopPropagation();
+      startCaseDrag(ci, caseCY, e);
+    });
 
     // 折叠按钮（右侧 +/- 圆形）
     const collapseR  = 8;
@@ -1064,6 +1245,122 @@ function renderMindmap(cases, moduleName, resetScale = true) {
 }
 
 /* ════════════════════════════════════════════════════════
+   用例拖拽排序
+════════════════════════════════════════════════════════ */
+let dragState = null;
+let dragIndicator = null;
+
+function startCaseDrag(caseIndex, startCY, e) {
+  const svgRect = $svg.getBoundingClientRect();
+  dragState = {
+    caseIndex,
+    startY: e.clientY,
+    casePositions: [],
+  };
+
+  // Calculate Y positions of all cases
+  let curY = PADDING + NODE_H / 2;
+  currentCases.forEach((c, i) => {
+    const rows = calcCaseRows(c);
+    const blockH = rows * ROW_HEIGHT;
+    const caseCY = curY + (blockH - ROW_HEIGHT) / 2;
+    dragState.casePositions.push({ index: i, cy: caseCY, top: curY, bottom: curY + blockH });
+    curY += rows * ROW_HEIGHT + CASE_GAP;
+  });
+
+  // Create drop indicator line
+  dragIndicator = svgEl('line', {
+    x1: X_CASE - 30, x2: X_CASE + CASE_W + 30,
+    y1: 0, y2: 0,
+    stroke: '#4096FF', 'stroke-width': 2, 'stroke-dasharray': '6,3',
+    display: 'none',
+  });
+  $svg.appendChild(dragIndicator);
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  const svgRect = $svg.getBoundingClientRect();
+  const mouseY = (e.clientY - svgRect.top + $canvasScroll.scrollTop) / scale;
+
+  // Find insert position
+  let insertIdx = dragState.casePositions.length;
+  let indicatorY = 0;
+  for (let i = 0; i < dragState.casePositions.length; i++) {
+    const pos = dragState.casePositions[i];
+    if (mouseY < pos.cy) {
+      insertIdx = i;
+      indicatorY = pos.top - CASE_GAP / 2;
+      break;
+    }
+  }
+  if (insertIdx === dragState.casePositions.length) {
+    const last = dragState.casePositions[dragState.casePositions.length - 1];
+    indicatorY = last.bottom + CASE_GAP / 2;
+  }
+
+  dragState.insertIdx = insertIdx;
+  dragIndicator.setAttribute('y1', indicatorY);
+  dragIndicator.setAttribute('y2', indicatorY);
+  dragIndicator.setAttribute('display', '');
+}
+
+async function onDragEnd(e) {
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+
+  if (dragIndicator) {
+    dragIndicator.remove();
+    dragIndicator = null;
+  }
+
+  if (!dragState) return;
+
+  const fromIdx = dragState.caseIndex;
+  const toIdx = dragState.insertIdx;
+  dragState = null;
+
+  if (toIdx === undefined || toIdx === fromIdx || toIdx === fromIdx + 1) return;
+
+  const projectId = PROJECT_MAP_JS[currentProject];
+  if (!projectId) return;
+
+  const moveCase = currentCases[fromIdx];
+  if (!moveCase) return;
+
+  // Determine target and mode
+  let targetId, moveMode;
+  if (toIdx === 0) {
+    // Moving to the very top: place BEFORE the first case
+    targetId = currentCases[0].id;
+    moveMode = 'BEFORE';
+  } else if (toIdx >= currentCases.length) {
+    // Moving to the very bottom: place AFTER the last case
+    targetId = currentCases[currentCases.length - 1].id;
+    moveMode = 'AFTER';
+  } else {
+    // Moving before the case at toIdx
+    targetId = currentCases[toIdx].id;
+    moveMode = 'BEFORE';
+  }
+
+  try {
+    await apiFetch('/api/cases/drag-sort', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, moveId: moveCase.id, targetId, moveMode }),
+    });
+    // Reload to reflect new order
+    if (currentModuleId) await loadCases(currentModuleId, currentModuleName);
+  } catch (err) {
+    alert('排序失败：' + err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════
    选中节点 + ＋按钮 + Delete 删除
 ════════════════════════════════════════════════════════ */
 
@@ -1230,6 +1527,73 @@ document.addEventListener('keydown', async (e) => {
     reloadCurrentModule();
   } catch (err) {
     alert('删除失败：' + err.message);
+  }
+});
+
+/** 键盘 Enter 新增同级节点 */
+document.addEventListener('keydown', async (e) => {
+  if (isReadonly) return;
+  if (e.key !== 'Enter') return;
+  if (!selectedNode) return;
+  const active = document.activeElement;
+  if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+
+  e.preventDefault();
+  const { caseObj, field, stepIdx } = selectedNode;
+
+  try {
+    if (field === 'case' || field === 'caseName' || field === 'module') {
+      // 用例节点 / 模块根节点 → 新增同级用例
+      const result = await createNewCase('新用例');
+      if (result && result.data) {
+        const newId = result.data.id || result.data;
+        // 如果有选中的用例，将新用例排到它后面
+        if (caseObj && caseObj.id && caseObj.id !== '__module__') {
+          const projectId = PROJECT_MAP_JS[currentProject];
+          if (projectId) {
+            try {
+              await apiFetch('/api/cases/drag-sort', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  projectId,
+                  moveId: newId,
+                  targetId: caseObj.id,
+                  moveMode: 'AFTER',
+                }),
+              });
+            } catch (e) { console.warn('排序失败', e); }
+          }
+        }
+      }
+      if (currentModuleId) loadCases(currentModuleId, currentModuleName);
+    } else if (field === 'step') {
+      // 步骤 → 在当前步骤后插入同级新步骤
+      const arr = parseSteps(caseObj.steps);
+      const newStep = { id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' };
+      arr.splice(stepIdx + 1, 0, newStep);
+      arr.forEach((s, i) => { s.id = String(i + 1); s.num = i + 1; });
+      await patchCaseSteps(caseObj, arr);
+      reloadCurrentModule();
+    } else if (field === 'result') {
+      // 预期结果 → 新增同级预期结果
+      const arr = parseSteps(caseObj.steps);
+      if (arr[stepIdx]) {
+        const existing = arr[stepIdx].result || '';
+        arr[stepIdx].result = existing ? existing + '\n新预期结果' : '新预期结果';
+      }
+      await patchCaseSteps(caseObj, arr);
+      reloadCurrentModule();
+    } else if (field === 'prereq') {
+      // 前置条件 → 新增步骤
+      const arr = parseSteps(caseObj.steps);
+      arr.push({ id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' });
+      await patchCaseSteps(caseObj, arr);
+      reloadCurrentModule();
+    }
+    clearSelection();
+  } catch (err) {
+    alert('新增失败：' + err.message);
   }
 });
 
@@ -1457,6 +1821,7 @@ function openInlineEditor(nodeG, caseObj, field, stepIdx, origText, anchors, res
   editor.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       commitEdit();
     } else if (e.key === 'Escape') {
       cancelEdit();
@@ -1632,6 +1997,7 @@ async function loadModules(project) {
   try {
     const modules = await apiFetch(`/api/modules?project=${encodeURIComponent(project)}`);
     hideLoading();
+    cachedModuleTree = modules || [];
     if (!modules || modules.length === 0) {
       $moduleTree.innerHTML = '<div class="empty-tip">暂无模块</div>';
       return;
@@ -1819,7 +2185,6 @@ function expandAndClickModule(moduleId) {
   // URL 指定模块：嵌入模式直接加载用例，独立模式展开树节点
   if (urlParams.moduleId && urlParams.moduleId !== 'all') {
     if (urlParams.embedded) {
-      // 嵌入模式：跳过模块树，直接加载用例（使用 URL 传入的模块名）
       loadCases(urlParams.moduleId, urlParams.moduleName);
     } else {
       expandAndClickModule(urlParams.moduleId);

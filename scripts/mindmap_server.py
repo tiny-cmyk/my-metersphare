@@ -369,6 +369,27 @@ async def create_case(request: Request):
         raise HTTPException(status_code=502, detail=f"请求 MeterSphere 失败：{e}")
 
 
+@app.post("/api/cases/drag-sort")
+async def drag_sort_case(request: Request):
+    """
+    拖拽排序用例
+    接收 JSON body: { projectId, moveId, targetId, moveMode }
+    moveMode: 'BEFORE' | 'AFTER'
+    """
+    try:
+        body: dict = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="请求体必须是合法 JSON")
+
+    url = f"{BASE_URL}/functional/case/edit/pos"
+    try:
+        resp = requests.post(url, headers=json_headers(), json=body, timeout=30)
+        resp.raise_for_status()
+        return JSONResponse(content=resp.json())
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"排序失败：{e}")
+
+
 # ──────────────────────────────────────────────
 # CLI 入口
 # ──────────────────────────────────────────────
