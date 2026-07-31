@@ -466,6 +466,7 @@ let autoRefreshTimer = null;
 let lastRetryAction = null;  // 用于"重试"按钮
 let cachedModuleTree = [];   // 缓存模块树数据（用于查找子模块）
 let expandedModules = new Set();  // 模块地图中展开的模块 ID
+let expandedCasesCache = {};     // 叶子模块展开后缓存的用例 { moduleId: [cases] }
 
 /* ════════════════════════════════════════════════════════
    DOM 引用
@@ -832,10 +833,17 @@ function findModuleById(nodes, id) {
 }
 
 /**
- * 渲染模块结构脑图（当选中的模块有子模块但无直属用例时）
- * 展示子模块节点，点击后加载该子模块的用例
+ * 渲染模块结构脑图（支持多级目录逐级展开/收起）
+ * - 目录模块：点击展开/收起子模块
+ * - 叶子模块：点击展开/收起该模块下的用例列表
  */
+let _moduleMapParent = null;
+let _moduleMapChildren = null;
+
 function renderModuleMap(parentModule, childModules, resetScale = true) {
+  _moduleMapParent = parentModule;
+  _moduleMapChildren = childModules;
+
   clearSelection();
   while ($svg.firstChild) $svg.removeChild($svg.firstChild);
   document.querySelectorAll('.inline-editor').forEach(el => el.remove());
@@ -845,29 +853,62 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
   $canvasScroll.style.display = '';
   $placeholder.style.display = 'none';
 
-  // Flatten visible tree based on expandedModules
-  const visibleNodes = [];
-  function collectVisible(nodes, depth) {
-    nodes.forEach(node => {
-      visibleNodes.push({ ...node, depth });
-      if (expandedModules.has(node.id) && node.children && node.children.length > 0) {
-        collectVisible(node.children, depth + 1);
+  const MM_ROW = 44;      // 模块行高
+  const MM_CASE_ROW = 36; // 用例行高
+  const MM_GAP = 6;       // 行间距
+  const MM_W = 200;       // 节点宽度
+  const MM_CASE_W = 240;  // 用例节点宽度
+  const MM_H_GAP = 50;    // 水平间距
+
+  // ── 递归计算子树高度 ──
+  function calcHeight(node) {
+    const isExpanded = expandedModules.has(node.id);
+    const hasChildren = node.children && node.children.length > 0;
+
+    if (!isExpanded) return MM_ROW;
+
+    if (hasChildren) {
+      let h = 0;
+      node.children.forEach((c, i) => {
+        if (i > 0) h += MM_GAP;
+        h += calcHeight(c);
+      });
+      return Math.max(MM_ROW, h);
+    }
+
+    // 叶子模块展开 → 显示用例
+    const cases = expandedCasesCache[node.id];
+    if (cases && cases.length > 0) {
+      const casesH = cases.length * MM_CASE_ROW + (cases.length - 1) * MM_GAP;
+      return Math.max(MM_ROW, casesH);
+    }
+    return MM_ROW;
+  }
+
+  // ── 计算最大深度（用于画布宽度）──
+  function calcMaxDepth(nodes, depth) {
+    let max = depth;
+    nodes.forEach(n => {
+      if (expandedModules.has(n.id)) {
+        if (n.children && n.children.length > 0) {
+          max = Math.max(max, calcMaxDepth(n.children, depth + 1));
+        } else if (expandedCasesCache[n.id]) {
+          max = Math.max(max, depth + 1);
+        }
       }
     });
+    return max;
   }
-  collectVisible(childModules, 1);
 
-  $caseCount.textContent = `${visibleNodes.length} 个模块`;
+  // 整体高度
+  let totalH = 0;
+  childModules.forEach((c, i) => {
+    if (i > 0) totalH += MM_GAP;
+    totalH += calcHeight(c);
+  });
 
-  const ROW_H = 48;
-  const GAP = 8;
-  const BASE_W = 200;
-  const INDENT = 24;
-  const maxDepth = Math.max(...visibleNodes.map(n => n.depth));
-  const maxW = BASE_W + maxDepth * INDENT;
-
-  const totalH = visibleNodes.length * ROW_H + (visibleNodes.length - 1) * GAP;
-  const svgW = X_MODULE + MODULE_W + H_GAP + maxW + PADDING * 2;
+  const maxDepth = calcMaxDepth(childModules, 1);
+  const svgW = X_MODULE + MODULE_W + MM_H_GAP + (maxDepth) * (MM_W + MM_H_GAP) + MM_CASE_W + PADDING * 2;
   const svgH = PADDING * 2 + totalH;
 
   $svg.setAttribute('width', svgW);
@@ -880,95 +921,180 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
   const nodeLayer = svgEl('g', { id: 'nodes' });
   $svg.appendChild(nodeLayer);
 
-  // 父模块根节点
+  // 根节点
   const rootCY = PADDING + totalH / 2;
   const rootAnchors = drawModuleNode(nodeLayer, parentModule.name || currentModuleName, rootCY);
 
-  // 子模块节点（多层级展开）
-  const childX = X_MODULE + MODULE_W + H_GAP;
-  visibleNodes.forEach((child, i) => {
-    const cy = PADDING + i * (ROW_H + GAP) + ROW_H / 2;
-    const indent = (child.depth - 1) * INDENT;
-    const nodeX = childX + indent;
-    const nodeW = BASE_W;
-    const hasChildren = child.children && child.children.length > 0;
-    const isExpanded = expandedModules.has(child.id);
-    const isLeaf = !hasChildren;
+  $caseCount.textContent = '';
 
-    const g = svgEl('g', { style: 'cursor:pointer' });
+  // ── 递归渲染子树 ──
+  function renderSubtree(nodes, x, yStart, parentRight, parentCY) {
+    let curY = yStart;
+    nodes.forEach((node, ni) => {
+      const subtreeH = calcHeight(node);
+      const cy = curY + subtreeH / 2;
+      const isExpanded = expandedModules.has(node.id);
+      const hasChildren = node.children && node.children.length > 0;
+      const isLeaf = !hasChildren;
+      const hasCases = isLeaf && expandedCasesCache[node.id] && expandedCasesCache[node.id].length > 0;
 
-    const rect = svgEl('rect', {
-      x: nodeX, y: cy - ROW_H / 2 + 4, width: nodeW, height: ROW_H - 8,
-      rx: 6, fill: isLeaf ? '#fff' : (isExpanded ? '#E6F4FF' : '#F0F5FF'),
-      stroke: isLeaf ? '#D9D9D9' : '#4096FF', 'stroke-width': 1.5,
-      'pointer-events': 'all',
-    });
-    g.appendChild(rect);
+      // ── 绘制模块节点 ──
+      const g = svgEl('g', { style: 'cursor:pointer' });
 
-    // Toggle icon for non-leaf
-    if (hasChildren) {
-      const toggleTxt = svgEl('text', {
-        x: nodeX + 14, y: cy,
-        'dominant-baseline': 'middle', 'text-anchor': 'middle',
-        'font-size': 10, fill: '#4096FF', 'pointer-events': 'none',
+      const fillColor = isLeaf
+        ? (isExpanded && hasCases ? '#F6FFED' : '#fff')
+        : (isExpanded ? '#E6F4FF' : '#F0F5FF');
+      const strokeColor = isLeaf
+        ? (isExpanded && hasCases ? '#52C41A' : '#D9D9D9')
+        : '#4096FF';
+
+      const rect = svgEl('rect', {
+        x, y: cy - MM_ROW / 2 + 2, width: MM_W, height: MM_ROW - 4,
+        rx: 6, fill: fillColor, stroke: strokeColor, 'stroke-width': 1.5,
+        'pointer-events': 'all',
       });
-      toggleTxt.textContent = isExpanded ? '▼' : '▶';
-      g.appendChild(toggleTxt);
-    }
+      g.appendChild(rect);
 
-    const label = truncateByPixel(child.name || '', nodeW - (hasChildren ? 40 : 16));
-    const txt = svgEl('text', {
-      x: nodeX + (hasChildren ? 26 : 12), y: cy,
-      'dominant-baseline': 'middle',
-      'font-size': 13, fill: isLeaf ? '#333' : '#1677FF',
-      'font-weight': hasChildren ? 600 : 400,
-      'pointer-events': 'none',
-    });
-    txt.textContent = label;
-    g.appendChild(txt);
-
-    // Case count badge for leaf modules
-    if (isLeaf && child.count !== undefined) {
-      const countTxt = svgEl('text', {
-        x: nodeX + nodeW - 10, y: cy,
-        'dominant-baseline': 'middle', 'text-anchor': 'end',
-        'font-size': 11, fill: '#8C8C8C', 'pointer-events': 'none',
-      });
-      countTxt.textContent = child.count || '';
-      g.appendChild(countTxt);
-    }
-
-    const defaultFill = isLeaf ? '#fff' : (isExpanded ? '#E6F4FF' : '#F0F5FF');
-    g.addEventListener('mouseenter', () => rect.setAttribute('fill', isLeaf ? '#FAFAFA' : '#E6F4FF'));
-    g.addEventListener('mouseleave', () => rect.setAttribute('fill', defaultFill));
-
-    // tooltip
-    g.addEventListener('mouseenter', (e) => showTooltip(e, child.name));
-    g.addEventListener('mousemove',  (e) => moveTooltip(e));
-    g.addEventListener('mouseleave', hideTooltip);
-
-    g.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (hasChildren) {
-        // Toggle expand/collapse
-        if (isExpanded) expandedModules.delete(child.id);
-        else expandedModules.add(child.id);
-        renderModuleMap(parentModule, childModules, false);
-      } else {
-        // Leaf module → load cases
-        loadCases(child.id, child.name);
-        expandAndClickModule(child.id);
+      // 展开/收起图标
+      const canExpand = hasChildren || isLeaf;
+      if (canExpand) {
+        const icon = svgEl('text', {
+          x: x + 14, y: cy,
+          'dominant-baseline': 'middle', 'text-anchor': 'middle',
+          'font-size': 10, fill: isLeaf ? '#52C41A' : '#4096FF', 'pointer-events': 'none',
+        });
+        icon.textContent = isExpanded ? '▼' : '▶';
+        g.appendChild(icon);
       }
+
+      // 模块名
+      const label = truncateByPixel(node.name || '', MM_W - 44);
+      const txt = svgEl('text', {
+        x: x + 26, y: cy,
+        'dominant-baseline': 'middle',
+        'font-size': 13, fill: isLeaf ? '#333' : '#1677FF',
+        'font-weight': hasChildren ? 600 : 400,
+        'pointer-events': 'none',
+      });
+      txt.textContent = label;
+      g.appendChild(txt);
+
+      // hover
+      g.addEventListener('mouseenter', () => rect.setAttribute('fill', isLeaf ? '#FAFAFA' : '#E6F4FF'));
+      g.addEventListener('mouseleave', () => rect.setAttribute('fill', fillColor));
+      g.addEventListener('mouseenter', (e) => showTooltip(e, node.name));
+      g.addEventListener('mousemove',  (e) => moveTooltip(e));
+      g.addEventListener('mouseleave', hideTooltip);
+
+      // 点击事件
+      g.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isExpanded) {
+          expandedModules.delete(node.id);
+          renderModuleMap(parentModule, childModules, false);
+        } else {
+          expandedModules.add(node.id);
+          if (isLeaf && !expandedCasesCache[node.id]) {
+            // 异步加载用例
+            loadModuleCasesInline(node.id);
+          } else {
+            renderModuleMap(parentModule, childModules, false);
+          }
+        }
+      });
+
+      nodeLayer.appendChild(g);
+
+      // 连接线到父级
+      drawConnector(lineLayer, parentRight, parentCY, x, cy);
+
+      // ── 递归渲染子节点 ──
+      if (isExpanded) {
+        const childX = x + MM_W + MM_H_GAP;
+        const nodeRight = x + MM_W;
+
+        if (hasChildren) {
+          renderSubtree(node.children, childX, curY, nodeRight, cy);
+        } else if (hasCases) {
+          // 渲染用例列表
+          const cases = expandedCasesCache[node.id];
+          let caseY = curY;
+          cases.forEach(c => {
+            const caseCY = caseY + MM_CASE_ROW / 2;
+            const pri = getPriority(c);
+
+            const caseG = svgEl('g', { style: 'cursor:pointer' });
+            const caseRect = svgEl('rect', {
+              x: childX, y: caseCY - MM_CASE_ROW / 2 + 2, width: MM_CASE_W, height: MM_CASE_ROW - 4,
+              rx: 4, fill: '#fff', stroke: '#E8E8E8', 'stroke-width': 1,
+              'pointer-events': 'all',
+            });
+            caseG.appendChild(caseRect);
+
+            // 优先级小圆点
+            if (pri && PRI_COLORS[pri]) {
+              const dot = svgEl('circle', {
+                cx: childX + 12, cy: caseCY, r: 4,
+                fill: PRI_COLORS[pri], 'pointer-events': 'none',
+              });
+              caseG.appendChild(dot);
+            }
+
+            const caseLabel = truncateByPixel(c.name || '', MM_CASE_W - 30);
+            const caseTxt = svgEl('text', {
+              x: childX + (pri ? 22 : 10), y: caseCY,
+              'dominant-baseline': 'middle',
+              'font-size': 12, fill: '#333', 'pointer-events': 'none',
+            });
+            caseTxt.textContent = caseLabel;
+            caseG.appendChild(caseTxt);
+
+            caseG.addEventListener('mouseenter', () => caseRect.setAttribute('fill', '#FAFAFA'));
+            caseG.addEventListener('mouseleave', () => caseRect.setAttribute('fill', '#fff'));
+            caseG.addEventListener('mouseenter', (e) => showTooltip(e, c.name));
+            caseG.addEventListener('mousemove',  (e) => moveTooltip(e));
+            caseG.addEventListener('mouseleave', hideTooltip);
+
+            // 点击用例 → 跳到该模块的用例脑图
+            caseG.addEventListener('click', (e) => {
+              e.stopPropagation();
+              loadCases(node.id, node.name);
+              expandAndClickModule(node.id);
+            });
+
+            nodeLayer.appendChild(caseG);
+            drawConnector(lineLayer, nodeRight, cy, childX, caseCY);
+            caseY += MM_CASE_ROW + MM_GAP;
+          });
+        }
+      }
+
+      curY += subtreeH + MM_GAP;
     });
+  }
 
-    nodeLayer.appendChild(g);
-
-    // 连接线：连到根节点
-    drawConnector(lineLayer, rootAnchors.right, rootAnchors.cy, nodeX, cy);
-  });
+  renderSubtree(childModules, X_MODULE + MODULE_W + MM_H_GAP, PADDING, rootAnchors.right, rootAnchors.cy);
 
   if (resetScale) applyScale(1.0, false);
   else applyScale(scale, false);
+}
+
+/** 异步加载叶子模块的用例列表（用于模块地图内联展开） */
+async function loadModuleCasesInline(moduleId) {
+  try {
+    showLoading('加载用例…');
+    const cases = await apiFetch(
+      `/api/cases?project=${encodeURIComponent(currentProject)}&moduleId=${encodeURIComponent(moduleId)}`
+    );
+    hideLoading();
+    expandedCasesCache[moduleId] = cases || [];
+    if (_moduleMapParent && _moduleMapChildren) {
+      renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
+    }
+  } catch (e) {
+    hideLoading();
+    alert('加载用例失败：' + e.message);
+  }
 }
 
 /**
