@@ -865,12 +865,13 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
   const MM_RESULT_W = 220; // 预期结果节点宽度
   const MM_H_GAP = 50;    // 水平间距
 
-  /** 计算单个用例的高度（含展开的步骤） */
+  /** 计算单个用例的高度（含展开的步骤，跳过空步骤） */
   function calcCaseH(c) {
     if (!expandedCaseIds.has(c.id)) return MM_CASE_ROW;
     const steps = parseSteps(c.steps);
-    if (steps.length === 0) return MM_CASE_ROW;
-    const stepsH = steps.length * MM_STEP_ROW + (steps.length - 1) * MM_GAP;
+    const visibleSteps = steps.filter(s => (s.desc || s.description || '').trim() || (s.result || s.expected || '').trim());
+    if (visibleSteps.length === 0) return MM_CASE_ROW;
+    const stepsH = visibleSteps.length * MM_STEP_ROW + (visibleSteps.length - 1) * MM_GAP;
     return Math.max(MM_CASE_ROW, stepsH);
   }
 
@@ -1234,9 +1235,13 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
               }
 
               steps.forEach((step, si) => {
-                const stepCY = stepY + MM_STEP_ROW / 2;
                 const stepText = step.desc || step.description || '';
-                const resultText = step.result || step.expected || '';
+                const resultText = (step.result || step.expected || '').split('\n')[0].trim();
+
+                // 跳过步骤和结果都为空的行
+                if (!stepText && !resultText) { return; }
+
+                const stepCY = stepY + MM_STEP_ROW / 2;
 
                 // 步骤节点（双击可编辑）
                 const sG = svgEl('g', { style: 'cursor:pointer' });
@@ -1278,7 +1283,7 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                   rG.appendChild(Object.assign(svgEl('text', {
                     x: resultX + 8, y: stepCY, 'dominant-baseline': 'middle',
                     'font-size': 11, fill: '#531DAB', 'pointer-events': 'none',
-                  }), { textContent: truncateByPixel(resultText.split('\n')[0], MM_RESULT_W - 16) }));
+                  }), { textContent: truncateByPixel(resultText, MM_RESULT_W - 16) }));
                   rG.addEventListener('mouseenter', (e) => showTooltip(e, resultText));
                   rG.addEventListener('mousemove',  (e) => moveTooltip(e));
                   rG.addEventListener('mouseleave', hideTooltip);
@@ -2125,15 +2130,7 @@ document.addEventListener('keydown', async (e) => {
         treeSelectedCase = null;
         if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
       } else if (field === 'result') {
-        // 预期结果 → 在当前步骤的预期结果后追加新行
-        const arr = parseSteps(caseObj.steps);
-        if (arr[stepIdx]) {
-          const existing = arr[stepIdx].result || '';
-          arr[stepIdx].result = existing ? existing + '\n新预期结果' : '新预期结果';
-        }
-        await patchCaseSteps(caseObj, arr);
-        treeSelectedCase = null;
-        if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
+        // 预期结果节点不支持 Enter 新增（一个步骤对应一个预期结果，双击可编辑）
       }
     } catch (err) { alert('新增失败：' + err.message); }
     return;
@@ -2535,6 +2532,7 @@ window.addEventListener('mouseup', () => {
    Tooltip
 ════════════════════════════════════════════════════════ */
 function showTooltip(e, text) {
+  if (!text || !text.trim()) return;  // 空文本不显示 tooltip
   $tooltip.textContent = text;
   $tooltip.style.display = 'block';
   moveTooltip(e);
