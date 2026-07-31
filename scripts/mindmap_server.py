@@ -407,4 +407,14 @@ if __name__ == "__main__":
     print(f"🗺  脑图服务：http://localhost:{args.port}")
     print(f"   按 Ctrl+C 停止")
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    import uvicorn.config
+    config = uvicorn.Config(app, host="0.0.0.0", port=args.port)
+    server = uvicorn.Server(config)
+    # 允许端口重用，避免 TIME_WAIT 导致重启失败
+    import socket
+    orig_bind = socket.socket.bind
+    def reuse_bind(self, address):
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return orig_bind(self, address)
+    socket.socket.bind = reuse_bind
+    server.run()
