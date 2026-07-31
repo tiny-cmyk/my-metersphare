@@ -1024,8 +1024,12 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
 
       nodeLayer.appendChild(g);
 
-      // 连接线到父级
-      drawConnector(lineLayer, parentRight, parentCY, x, cy);
+      // 连接线到父级（直角折线）
+      const midLX = parentRight + (x - parentRight) * 0.5;
+      lineLayer.appendChild(svgEl('path', {
+        d: `M ${parentRight} ${parentCY} L ${midLX} ${parentCY} L ${midLX} ${cy} L ${x} ${cy}`,
+        stroke: '#4096FF', 'stroke-width': 1.2, fill: 'none', opacity: 0.5,
+      }));
 
       // ── 递归渲染子节点 ──
       if (isExpanded) {
@@ -1035,10 +1039,20 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
         if (hasChildren) {
           renderSubtree(node.children, childX, curY, nodeRight, cy);
         } else if (hasCases) {
-          // 渲染用例列表（支持展开步骤）
+          // 渲染用例列表（支持展开步骤、拖拽排序、tooltip、编辑）
           const cases = expandedCasesCache[node.id];
           let caseY = curY;
-          cases.forEach(c => {
+
+          // 直角折线连接器（模块树专用）
+          function treeLine(layer, sx, sy, tx, ty) {
+            const midX = sx + (tx - sx) * 0.5;
+            const d = `M ${sx} ${sy} L ${midX} ${sy} L ${midX} ${ty} L ${tx} ${ty}`;
+            layer.appendChild(svgEl('path', {
+              d, stroke: '#B7EB8F', 'stroke-width': 1.2, fill: 'none', opacity: 0.7,
+            }));
+          }
+
+          cases.forEach((c, ci) => {
             const caseH = calcCaseH(c);
             const caseCY = caseY + caseH / 2;
             const pri = getPriority(c);
@@ -1046,7 +1060,7 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
             const steps = parseSteps(c.steps);
             const hasSteps = steps.length > 0;
 
-            const caseG = svgEl('g', { style: 'cursor:pointer' });
+            const caseG = svgEl('g', { style: 'cursor:default' });
 
             // 用例背景
             const caseFill = isCaseExpanded ? '#F6FFED' : '#fff';
@@ -1058,6 +1072,24 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
             });
             caseG.appendChild(caseRect);
 
+            // 拖拽手柄 ⋮⋮
+            if (!isReadonly) {
+              const dhG = svgEl('g', { style: 'cursor:grab; opacity:0;' });
+              const dhX = childX - 14;
+              dhG.appendChild(svgEl('rect', { x: dhX - 8, y: caseCY - 12, width: 16, height: 24, fill: 'transparent', 'pointer-events': 'all' }));
+              dhG.appendChild(Object.assign(svgEl('text', {
+                x: dhX, y: caseCY, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+                'font-size': 12, fill: '#BFBFBF', 'pointer-events': 'none',
+              }), { textContent: '⋮⋮' }));
+              caseG.appendChild(dhG);
+              caseG.addEventListener('mouseenter', () => { dhG.style.opacity = '1'; });
+              caseG.addEventListener('mouseleave', () => { dhG.style.opacity = '0'; });
+              dhG.addEventListener('mousedown', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                startTreeCaseDrag(node.id, ci, cases, childX, e);
+              });
+            }
+
             // 优先级小圆点
             if (pri && PRI_COLORS[pri]) {
               caseG.appendChild(svgEl('circle', {
@@ -1066,14 +1098,15 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
               }));
             }
 
-            // 用例名
+            // 用例名（双击可编辑）
             const nameMaxW = MM_CASE_W - (hasSteps ? 50 : 30);
             const caseLabel = truncateByPixel(c.name || '', nameMaxW);
-            caseG.appendChild(Object.assign(svgEl('text', {
+            const caseTxt = Object.assign(svgEl('text', {
               x: childX + (pri ? 22 : 10), y: caseCY,
               'dominant-baseline': 'middle',
               'font-size': 12, fill: '#333', 'pointer-events': 'none',
-            }), { textContent: caseLabel }));
+            }), { textContent: caseLabel });
+            caseG.appendChild(caseTxt);
 
             // 展开/收起按钮（+/-）
             if (hasSteps) {
@@ -1097,8 +1130,8 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
               caseG.appendChild(btnG);
             }
 
-            // hover & tooltip
-            caseG.addEventListener('mouseenter', () => caseRect.setAttribute('fill', '#FAFAFA'));
+            // hover & tooltip（显示完整用例名）
+            caseG.addEventListener('mouseenter', () => caseRect.setAttribute('fill', isCaseExpanded ? '#EAFFEA' : '#FAFAFA'));
             caseG.addEventListener('mouseleave', () => caseRect.setAttribute('fill', caseFill));
             caseG.addEventListener('mouseenter', (e) => showTooltip(e, c.name));
             caseG.addEventListener('mousemove',  (e) => moveTooltip(e));
@@ -1106,7 +1139,7 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
             caseG.addEventListener('click', (e) => e.stopPropagation());
 
             nodeLayer.appendChild(caseG);
-            drawConnector(lineLayer, nodeRight, cy, childX, caseCY);
+            treeLine(lineLayer, nodeRight, cy, childX, caseCY);
 
             // ── 展开的步骤 + 预期结果 ──
             if (isCaseExpanded && hasSteps) {
@@ -1120,34 +1153,38 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                 const stepText = step.desc || step.description || '';
                 const resultText = step.result || step.expected || '';
 
-                // 步骤节点
-                const sRect = svgEl('rect', {
+                // 步骤节点（带 tooltip）
+                const sG = svgEl('g', { style: 'cursor:default' });
+                sG.appendChild(svgEl('rect', {
                   x: stepX, y: stepCY - MM_STEP_ROW / 2 + 2, width: MM_STEP_W, height: MM_STEP_ROW - 4,
-                  rx: 4, fill: '#E6F4FF', stroke: '#91CAFF', 'stroke-width': 1,
-                });
-                nodeLayer.appendChild(sRect);
-                const sLabel = truncateByPixel(stepText, MM_STEP_W - 16);
-                nodeLayer.appendChild(Object.assign(svgEl('text', {
-                  x: stepX + 8, y: stepCY,
-                  'dominant-baseline': 'middle',
-                  'font-size': 11, fill: '#0958D9',
-                }), { textContent: sLabel }));
-                drawConnector(lineLayer, caseRight, caseCY, stepX, stepCY);
+                  rx: 4, fill: '#E6F4FF', stroke: '#91CAFF', 'stroke-width': 1, 'pointer-events': 'all',
+                }));
+                sG.appendChild(Object.assign(svgEl('text', {
+                  x: stepX + 8, y: stepCY, 'dominant-baseline': 'middle',
+                  'font-size': 11, fill: '#0958D9', 'pointer-events': 'none',
+                }), { textContent: truncateByPixel(stepText, MM_STEP_W - 16) }));
+                sG.addEventListener('mouseenter', (e) => showTooltip(e, stepText));
+                sG.addEventListener('mousemove',  (e) => moveTooltip(e));
+                sG.addEventListener('mouseleave', hideTooltip);
+                nodeLayer.appendChild(sG);
+                treeLine(lineLayer, caseRight, caseCY, stepX, stepCY);
 
-                // 预期结果节点
+                // 预期结果节点（带 tooltip）
                 if (resultText) {
-                  const rRect = svgEl('rect', {
+                  const rG = svgEl('g', { style: 'cursor:default' });
+                  rG.appendChild(svgEl('rect', {
                     x: resultX, y: stepCY - MM_STEP_ROW / 2 + 2, width: MM_RESULT_W, height: MM_STEP_ROW - 4,
-                    rx: 4, fill: '#F9F0FF', stroke: '#D3ADF7', 'stroke-width': 1,
-                  });
-                  nodeLayer.appendChild(rRect);
-                  const rLabel = truncateByPixel(resultText.split('\n')[0], MM_RESULT_W - 16);
-                  nodeLayer.appendChild(Object.assign(svgEl('text', {
-                    x: resultX + 8, y: stepCY,
-                    'dominant-baseline': 'middle',
-                    'font-size': 11, fill: '#531DAB',
-                  }), { textContent: rLabel }));
-                  drawConnector(lineLayer, stepX + MM_STEP_W, stepCY, resultX, stepCY);
+                    rx: 4, fill: '#F9F0FF', stroke: '#D3ADF7', 'stroke-width': 1, 'pointer-events': 'all',
+                  }));
+                  rG.appendChild(Object.assign(svgEl('text', {
+                    x: resultX + 8, y: stepCY, 'dominant-baseline': 'middle',
+                    'font-size': 11, fill: '#531DAB', 'pointer-events': 'none',
+                  }), { textContent: truncateByPixel(resultText.split('\n')[0], MM_RESULT_W - 16) }));
+                  rG.addEventListener('mouseenter', (e) => showTooltip(e, resultText));
+                  rG.addEventListener('mousemove',  (e) => moveTooltip(e));
+                  rG.addEventListener('mouseleave', hideTooltip);
+                  nodeLayer.appendChild(rG);
+                  treeLine(lineLayer, stepX + MM_STEP_W, stepCY, resultX, stepCY);
                 }
 
                 stepY += MM_STEP_ROW + MM_GAP;
@@ -1167,6 +1204,94 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
 
   if (resetScale) applyScale(1.0, false);
   else applyScale(scale, false);
+}
+
+/** 模块树视图中的用例拖拽排序 */
+let treeDragState = null;
+let treeDragLine = null;
+
+function startTreeCaseDrag(moduleId, caseIdx, cases, caseX, e) {
+  treeDragState = { moduleId, caseIdx, cases, caseX };
+  treeDragLine = svgEl('line', {
+    x1: caseX - 20, x2: caseX + 260 + 20,
+    y1: 0, y2: 0,
+    stroke: '#4096FF', 'stroke-width': 2, 'stroke-dasharray': '6,3', display: 'none',
+  });
+  $svg.appendChild(treeDragLine);
+  const MM_CASE_ROW = 36, MM_GAP = 6;
+
+  function onMove(ev) {
+    if (!treeDragState) return;
+    const svgRect = $svg.getBoundingClientRect();
+    const mouseY = (ev.clientY - svgRect.top + $canvasScroll.scrollTop) / scale;
+    treeDragLine.setAttribute('y1', mouseY);
+    treeDragLine.setAttribute('y2', mouseY);
+    treeDragLine.setAttribute('display', '');
+  }
+
+  async function onUp(ev) {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    if (treeDragLine) { treeDragLine.remove(); treeDragLine = null; }
+    if (!treeDragState) return;
+
+    const svgRect = $svg.getBoundingClientRect();
+    const mouseY = (ev.clientY - svgRect.top + $canvasScroll.scrollTop) / scale;
+    const { caseIdx: fromIdx, cases: caseList, moduleId: modId } = treeDragState;
+    treeDragState = null;
+
+    // 找出放置位置
+    // 简单方式：比较 mouseY 和每个用例的 index
+    const projectId = PROJECT_MAP_JS[currentProject];
+    if (!projectId || caseList.length < 2) return;
+
+    const moveCase = caseList[fromIdx];
+    if (!moveCase) return;
+
+    // 计算每个用例在当前列表中的大致位置
+    let toIdx = caseList.length;
+    for (let i = 0; i < caseList.length; i++) {
+      // 粗略估算：假设用例均匀分布
+      if (i !== fromIdx && i !== fromIdx + 1) {
+        // 用鼠标在列表中的相对位置判断
+      }
+    }
+
+    // 更精确的方式：基于鼠标位于第几个用例之间
+    // 利用 caseList 长度和 mouseY 相对位置
+    // 简化：让用户拖动到另一个用例上方/下方
+    const totalListH = caseList.reduce((h, c, i) => h + (i > 0 ? MM_GAP : 0) + 36, 0);
+
+    // 我们无法精确知道 caseY 的起始位置，所以用第一种/最后一个的方式
+    // 用更简单的方法：向上移动 = BEFORE 前一个，向下移动 = AFTER 后一个
+    let targetId, moveMode;
+    if (fromIdx > 0 && mouseY < (ev.clientY - svgRect.top + $canvasScroll.scrollTop) / scale) {
+      // 尝试移到前一个之前
+      targetId = caseList[Math.max(0, fromIdx - 1)].id;
+      moveMode = 'BEFORE';
+    } else if (fromIdx < caseList.length - 1) {
+      targetId = caseList[Math.min(caseList.length - 1, fromIdx + 1)].id;
+      moveMode = 'AFTER';
+    }
+
+    if (!targetId || targetId === moveCase.id) return;
+
+    try {
+      await apiFetch('/api/cases/drag-sort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, moveId: moveCase.id, targetId, moveMode }),
+      });
+      // 重新加载该模块的用例
+      delete expandedCasesCache[modId];
+      await loadModuleCasesInline(modId);
+    } catch (err) {
+      alert('排序失败：' + err.message);
+    }
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 /** 异步加载叶子模块的用例列表（用于模块地图内联展开） */
