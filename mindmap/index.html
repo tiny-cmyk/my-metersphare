@@ -1055,11 +1055,9 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
             caseG.addEventListener('mousemove',  (e) => moveTooltip(e));
             caseG.addEventListener('mouseleave', hideTooltip);
 
-            // 点击用例 → 跳到该模块的用例脑图
+            // 用例在树视图中为只读展示，点击不跳转
             caseG.addEventListener('click', (e) => {
               e.stopPropagation();
-              loadCases(node.id, node.name);
-              expandAndClickModule(node.id);
             });
 
             nodeLayer.appendChild(caseG);
