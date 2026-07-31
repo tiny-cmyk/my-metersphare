@@ -2462,22 +2462,34 @@ async function loadCases(moduleId, moduleName, silent = false) {
 
     if (!silent) {
       currentCases = cases || [];
-      // 用例为空时检查是否有子模块，有则展示模块地图
-      if (currentCases.length === 0) {
-        const mod = findModuleById(cachedModuleTree, moduleId);
-        if (mod && mod.children && mod.children.length > 0) {
-          renderModuleMap(mod, mod.children);
-          return;
-        }
+      const mod = findModuleById(cachedModuleTree, moduleId);
+
+      if (currentCases.length === 0 && mod && mod.children && mod.children.length > 0) {
+        // 有子模块无用例 → 展示模块地图
+        renderModuleMap(mod, mod.children);
+      } else {
+        // 统一用树视图样式展示用例
+        expandedCasesCache[moduleId] = currentCases;
+        expandedModules.add(moduleId);
+        // 构造一个包含该模块的树视图
+        const leafMod = mod || { id: moduleId, name: moduleName || currentModuleName, children: [] };
+        renderModuleMap({ name: moduleName || currentModuleName }, [leafMod]);
       }
-      renderMindmap(currentCases, currentModuleName);
     } else {
       // 静默刷新：对比 updateTime，如有变更则重新渲染
       const newCases = cases || [];
       const changed = hasChanged(currentCases, newCases);
       if (changed) {
         currentCases = newCases;
-        renderMindmap(currentCases, currentModuleName);
+        expandedCasesCache[moduleId] = currentCases;
+        // 如果当前在树视图中，刷新树视图
+        if (_moduleMapParent && _moduleMapChildren) {
+          renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
+        } else {
+          const mod = findModuleById(cachedModuleTree, moduleId);
+          const leafMod = mod || { id: moduleId, name: currentModuleName, children: [] };
+          renderModuleMap({ name: currentModuleName }, [leafMod], false);
+        }
         flashRefreshDot();
       }
     }
