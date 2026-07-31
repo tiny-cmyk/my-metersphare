@@ -1992,7 +1992,7 @@ function bindSelectable(nodeG, caseObj, field, stepIdx, anchors, resultIdx) {
         const result = await createNewCase('新用例');
         // 新用例加入本地数据后重渲染
         if (result && result.data) {
-          currentCases.push({ id: result.data.id || result.data, name: '新用例', steps: [{ id: '1', num: 1, desc: '步骤 1', result: '' }], prerequisite: '' });
+          currentCases.push({ id: result.data.id || result.data, name: '新用例', steps: [{ id: '1', num: 1, desc: '步骤 1', result: '预期结果' }], prerequisite: '' });
         }
         // 通过 API 重新拉取以获取完整数据
         if (currentModuleId) loadCases(currentModuleId, currentModuleName);
@@ -2001,7 +2001,7 @@ function bindSelectable(nodeG, caseObj, field, stepIdx, anchors, resultIdx) {
       // 用例节点 / 前置条件右侧 ＋ → 新增步骤
       addAction = async () => {
         const stepsArr = parseSteps(caseObj.steps);
-        stepsArr.push({ id: String(stepsArr.length + 1), num: stepsArr.length + 1, desc: '新步骤', result: '' });
+        stepsArr.push({ id: String(stepsArr.length + 1), num: stepsArr.length + 1, desc: '新步骤', result: '预期结果' });
         await patchCaseSteps(caseObj, stepsArr);
         reloadCurrentModule();
       };
@@ -2118,16 +2118,19 @@ document.addEventListener('keydown', async (e) => {
       } else if (field === 'step') {
         // 步骤节点 → 在当前步骤后插入新步骤
         const arr = parseSteps(caseObj.steps);
-        const newStep = { id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' };
+        const newStep = { id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '预期结果' };
         arr.splice(stepIdx + 1, 0, newStep);
         arr.forEach((s, i) => { s.id = String(i + 1); s.num = i + 1; });
         await patchCaseSteps(caseObj, arr);
         treeSelectedCase = null;
         if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
       } else if (field === 'result') {
-        // 预期结果 → 在当前步骤后插入新步骤
+        // 预期结果 → 在当前步骤的预期结果后追加新行
         const arr = parseSteps(caseObj.steps);
-        arr.push({ id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' });
+        if (arr[stepIdx]) {
+          const existing = arr[stepIdx].result || '';
+          arr[stepIdx].result = existing ? existing + '\n新预期结果' : '新预期结果';
+        }
         await patchCaseSteps(caseObj, arr);
         treeSelectedCase = null;
         if (_moduleMapParent && _moduleMapChildren) renderModuleMap(_moduleMapParent, _moduleMapChildren, false);
@@ -2223,7 +2226,7 @@ document.addEventListener('keydown', async (e) => {
     } else if (field === 'step') {
       // 步骤 → 在当前步骤后插入同级新步骤
       const arr = parseSteps(caseObj.steps);
-      const newStep = { id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' };
+      const newStep = { id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '预期结果' };
       arr.splice(stepIdx + 1, 0, newStep);
       arr.forEach((s, i) => { s.id = String(i + 1); s.num = i + 1; });
       await patchCaseSteps(caseObj, arr);
@@ -2240,7 +2243,7 @@ document.addEventListener('keydown', async (e) => {
     } else if (field === 'prereq') {
       // 前置条件 → 新增步骤
       const arr = parseSteps(caseObj.steps);
-      arr.push({ id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '' });
+      arr.push({ id: String(arr.length + 1), num: arr.length + 1, desc: '新步骤', result: '预期结果' });
       await patchCaseSteps(caseObj, arr);
       reloadCurrentModule();
     }
@@ -2280,7 +2283,7 @@ async function createNewCase(name) {
         projectId,
         moduleId: currentModuleId,
         name,
-        steps: [{ desc: '步骤 1', result: '' }],
+        steps: [{ desc: '步骤 1', result: '预期结果' }],
       }),
     });
   } catch (err) {
