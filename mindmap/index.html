@@ -1074,19 +1074,28 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
 
             // 拖拽手柄 ⋮⋮
             if (!isReadonly) {
-              const dhG = svgEl('g', { style: 'cursor:grab; opacity:0;' });
-              const dhX = childX - 14;
-              dhG.appendChild(svgEl('rect', { x: dhX - 8, y: caseCY - 12, width: 16, height: 24, fill: 'transparent', 'pointer-events': 'all' }));
-              dhG.appendChild(Object.assign(svgEl('text', {
-                x: dhX, y: caseCY, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
-                'font-size': 12, fill: '#BFBFBF', 'pointer-events': 'none',
-              }), { textContent: '⋮⋮' }));
+              const dhG = svgEl('g', { style: 'cursor:grab; opacity:0; transition: opacity 0.15s;' });
+              const dhX = childX - 16;
+              // 手柄背景
+              dhG.appendChild(svgEl('rect', {
+                x: dhX - 10, y: caseCY - 14, width: 20, height: 28,
+                rx: 4, fill: '#F0F0F0', stroke: '#D9D9D9', 'stroke-width': 0.5, 'pointer-events': 'all',
+              }));
+              // 六点拖拽图标
+              [-6, 0, 6].forEach(dy => {
+                [-3, 3].forEach(dx => {
+                  dhG.appendChild(svgEl('circle', {
+                    cx: dhX + dx, cy: caseCY + dy, r: 1.5,
+                    fill: '#8C8C8C', 'pointer-events': 'none',
+                  }));
+                });
+              });
               caseG.appendChild(dhG);
               caseG.addEventListener('mouseenter', () => { dhG.style.opacity = '1'; });
-              caseG.addEventListener('mouseleave', () => { dhG.style.opacity = '0'; });
+              caseG.addEventListener('mouseleave', () => { if (!treeDragState) dhG.style.opacity = '0'; });
               dhG.addEventListener('mousedown', (e) => {
                 e.preventDefault(); e.stopPropagation();
-                startTreeCaseDrag(node.id, ci, cases, childX, e);
+                startTreeCaseDrag(node.id, ci, cases, childX, caseCY, e);
               });
             }
 
@@ -1297,11 +1306,12 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
 
 /** 模块树视图中的用例拖拽排序 */
 let treeDragState = null;
-let treeDragLine = null;
+let treeDragGroup = null;  // SVG group for all drag visual elements
 
-function startTreeCaseDrag(moduleId, caseIdx, cases, caseX, e) {
-  // 计算每个用例的实际 SVG Y 位置（通过 getBoundingClientRect）
-  const caseNodes = $svg.querySelectorAll(`[data-tree-module-id="${moduleId}"]`);
+function startTreeCaseDrag(moduleId, caseIdx, cases, caseX, startCY, e) {
+  const MM_CASE_W = 260;
+
+  // 收集每个用例的实际 SVG Y 位置
   const positions = [];
   cases.forEach((c, i) => {
     const el = $svg.querySelector(`[data-tree-case-id="${c.id}"]`);
@@ -1309,54 +1319,119 @@ function startTreeCaseDrag(moduleId, caseIdx, cases, caseX, e) {
       const rect = el.getBoundingClientRect();
       const svgRect = $svg.getBoundingClientRect();
       const cy = (rect.top + rect.height / 2 - svgRect.top + $canvasScroll.scrollTop) / scale;
-      positions.push({ index: i, cy, id: c.id });
-    } else {
-      positions.push({ index: i, cy: 0, id: c.id });
+      const top = (rect.top - svgRect.top + $canvasScroll.scrollTop) / scale;
+      const bottom = (rect.bottom - svgRect.top + $canvasScroll.scrollTop) / scale;
+      positions.push({ index: i, cy, top, bottom, id: c.id });
     }
   });
 
-  treeDragState = { moduleId, caseIdx, cases, positions };
-  treeDragLine = svgEl('line', {
-    x1: caseX - 20, x2: caseX + 280,
-    y1: 0, y2: 0,
-    stroke: '#4096FF', 'stroke-width': 2, 'stroke-dasharray': '6,3', display: 'none',
+  treeDragState = { moduleId, caseIdx, cases, positions, insertIdx: -1 };
+
+  // 创建拖拽视觉效果组
+  treeDragGroup = svgEl('g', { id: 'tree-drag-overlay' });
+
+  // 被拖拽元素的半透明副本
+  const dragGhost = svgEl('rect', {
+    x: caseX, y: startCY - 16, width: MM_CASE_W, height: 32,
+    rx: 4, fill: '#4096FF', opacity: 0.15, 'pointer-events': 'none',
   });
-  $svg.appendChild(treeDragLine);
+  treeDragGroup.appendChild(dragGhost);
+
+  // 插入位置指示器（粗线 + 箭头）
+  const dropLine = svgEl('g', { display: 'none' });
+  dropLine.appendChild(svgEl('line', {
+    x1: caseX - 10, x2: caseX + MM_CASE_W + 10,
+    y1: 0, y2: 0,
+    stroke: '#4096FF', 'stroke-width': 3, 'stroke-linecap': 'round',
+  }));
+  // 左侧小箭头
+  dropLine.appendChild(svgEl('polygon', {
+    points: '0,0', fill: '#4096FF',  // 会在 onMove 里更新
+  }));
+  // 插入提示圆点
+  dropLine.appendChild(svgEl('circle', {
+    cx: caseX - 10, cy: 0, r: 4, fill: '#4096FF',
+  }));
+  treeDragGroup.appendChild(dropLine);
+
+  $svg.appendChild(treeDragGroup);
+
+  // 高亮源元素
+  const srcEl = $svg.querySelector(`[data-tree-case-id="${cases[caseIdx].id}"]`);
+  if (srcEl) {
+    const srcRect = srcEl.querySelector('rect');
+    if (srcRect) { srcRect.setAttribute('stroke', '#4096FF'); srcRect.setAttribute('stroke-width', '2'); }
+  }
+
+  document.body.style.cursor = 'grabbing';
 
   function onMove(ev) {
     if (!treeDragState) return;
     const svgRect = $svg.getBoundingClientRect();
     const mouseY = (ev.clientY - svgRect.top + $canvasScroll.scrollTop) / scale;
-    treeDragLine.setAttribute('y1', mouseY);
-    treeDragLine.setAttribute('y2', mouseY);
-    treeDragLine.setAttribute('display', '');
+
+    // 移动幽灵
+    dragGhost.setAttribute('y', mouseY - 16);
+
+    // 计算插入位置
+    let insertIdx = positions.length;
+    let lineY = 0;
+    for (let i = 0; i < positions.length; i++) {
+      if (mouseY < positions[i].cy) {
+        insertIdx = i;
+        lineY = positions[i].top - 3;
+        break;
+      }
+    }
+    if (insertIdx >= positions.length && positions.length > 0) {
+      lineY = positions[positions.length - 1].bottom + 3;
+    }
+    treeDragState.insertIdx = insertIdx;
+
+    // 跟自己位置一样时不显示指示线
+    if (insertIdx === caseIdx || insertIdx === caseIdx + 1) {
+      dropLine.setAttribute('display', 'none');
+    } else {
+      dropLine.setAttribute('display', '');
+      // 更新线的 Y 位置
+      const line = dropLine.querySelector('line');
+      line.setAttribute('y1', lineY);
+      line.setAttribute('y2', lineY);
+      // 更新箭头
+      const arrow = dropLine.querySelector('polygon');
+      arrow.setAttribute('points', `${caseX - 16},${lineY - 5} ${caseX - 10},${lineY} ${caseX - 16},${lineY + 5}`);
+      // 更新圆点
+      const dot = dropLine.querySelector('circle');
+      dot.setAttribute('cy', lineY);
+    }
   }
 
   async function onUp(ev) {
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
-    if (treeDragLine) { treeDragLine.remove(); treeDragLine = null; }
+    document.body.style.cursor = '';
+
+    // 恢复源元素样式
+    if (srcEl) {
+      const srcRect = srcEl.querySelector('rect');
+      if (srcRect) { srcRect.setAttribute('stroke', '#E8E8E8'); srcRect.setAttribute('stroke-width', '1'); }
+    }
+
+    // 清理视觉元素
+    if (treeDragGroup) { treeDragGroup.remove(); treeDragGroup = null; }
     if (!treeDragState) return;
 
-    const svgRect = $svg.getBoundingClientRect();
-    const mouseY = (ev.clientY - svgRect.top + $canvasScroll.scrollTop) / scale;
-    const { caseIdx: fromIdx, cases: caseList, moduleId: modId, positions: pos } = treeDragState;
+    const { caseIdx: fromIdx, cases: caseList, moduleId: modId, insertIdx } = treeDragState;
     treeDragState = null;
+
+    // 无变化
+    if (insertIdx < 0 || insertIdx === fromIdx || insertIdx === fromIdx + 1) return;
 
     const projectId = PROJECT_MAP_JS[currentProject];
     if (!projectId || caseList.length < 2) return;
 
     const moveCase = caseList[fromIdx];
     if (!moveCase) return;
-
-    // 找鼠标位于哪两个用例之间
-    let insertIdx = pos.length;
-    for (let i = 0; i < pos.length; i++) {
-      if (mouseY < pos[i].cy) { insertIdx = i; break; }
-    }
-
-    // 跳过无变化
-    if (insertIdx === fromIdx || insertIdx === fromIdx + 1) return;
 
     let targetId, moveMode;
     if (insertIdx === 0) {
