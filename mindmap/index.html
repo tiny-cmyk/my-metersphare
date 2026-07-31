@@ -2026,6 +2026,14 @@ async function loadCases(moduleId, moduleName, silent = false) {
 
     if (!silent) {
       currentCases = cases || [];
+      // 用例为空时检查是否有子模块，有则展示模块地图
+      if (currentCases.length === 0) {
+        const mod = findModuleById(cachedModuleTree, moduleId);
+        if (mod && mod.children && mod.children.length > 0) {
+          renderModuleMap(mod, mod.children);
+          return;
+        }
+      }
       renderMindmap(currentCases, currentModuleName);
     } else {
       // 静默刷新：对比 updateTime，如有变更则重新渲染
