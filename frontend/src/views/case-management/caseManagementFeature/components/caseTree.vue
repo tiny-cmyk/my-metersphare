@@ -273,7 +273,7 @@
       onBeforeOk: async () => {
         try {
           await deleteCaseModuleTree(node.id);
-          initModules();
+          await initModules();
           emits('deleteNode');
           Message.success(t('caseManagement.featureCase.deleteSuccess'));
         } catch (error) {
