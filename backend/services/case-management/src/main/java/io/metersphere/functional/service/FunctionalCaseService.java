@@ -585,8 +585,15 @@ public class FunctionalCaseService {
             functionalCaseAttachmentService.association(request.getRelateFileMetaIds(), request.getId(), userId, UPDATE_FUNCTIONAL_CASE_FILE_LOG_URL, request.getProjectId());
         }
 
-        //处理评审状态
-        handleReviewStatus(request, functionalCaseBlob, checked.getName(), userId);
+        //处理评审状态：如果前端显式传了 reviewStatus，直接用前端的值；否则走自动重新评审逻辑
+        if (StringUtils.isNotBlank(request.getReviewStatus())) {
+            FunctionalCase reviewUpdate = new FunctionalCase();
+            reviewUpdate.setId(request.getId());
+            reviewUpdate.setReviewStatus(request.getReviewStatus());
+            functionalCaseMapper.updateByPrimaryKeySelective(reviewUpdate);
+        } else {
+            handleReviewStatus(request, functionalCaseBlob, checked.getName(), userId);
+        }
 
         return functionalCase;
 

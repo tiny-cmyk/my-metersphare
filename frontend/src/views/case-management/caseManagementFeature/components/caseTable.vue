@@ -202,12 +202,28 @@
             </div>
           </template>
           <template #reviewStatus="{ record }">
-            <MsIcon
-              :type="statusIconMap[record.reviewStatus]?.icon || ''"
-              class="mr-1"
-              :class="[statusIconMap[record.reviewStatus].color]"
-            ></MsIcon>
-            <span>{{ statusIconMap[record.reviewStatus]?.statusText || '' }} </span>
+            <a-select
+              v-model:model-value="record.reviewStatus"
+              :placeholder="t('common.pleaseSelect')"
+              class="param-input w-full"
+              @click.stop
+              @change="() => handleReviewStatusChange(record)"
+            >
+              <template #label>
+                <span class="text-[var(--color-text-2)]">
+                  <MsIcon
+                    :type="statusIconMap[record.reviewStatus]?.icon || ''"
+                    class="mr-1"
+                    :class="[statusIconMap[record.reviewStatus]?.color]"
+                  />
+                  {{ statusIconMap[record.reviewStatus]?.statusText || '' }}
+                </span>
+              </template>
+              <a-option v-for="item of reviewStatusOptions" :key="item.value" :value="item.value">
+                <MsIcon :type="item.icon" class="mr-1" :class="[item.color]" />
+                {{ item.label }}
+              </a-option>
+            </a-select>
           </template>
           <template #lastExecuteResult="{ record }">
             <ExecuteStatusTag v-if="record.lastExecuteResult" :execute-result="record.lastExecuteResult" />
@@ -1342,6 +1358,16 @@
     return automationStatusFields.value?.options || [];
   });
 
+  // 评审状态下拉选项
+  const reviewStatusOptions = computed(() => {
+    return Object.entries(statusIconMap).map(([key, val]) => ({
+      value: key,
+      label: val.statusText,
+      icon: val.icon,
+      color: val.color,
+    }));
+  });
+
   async function getLoadListParams() {
     setLoadListParams(await initTableParams());
   }
@@ -2170,6 +2196,31 @@
       Message.success(t('common.updateSuccess'));
     } catch (error) {
       // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  }
+
+  // 更新评审状态（直接在用例上修改，无需走评审计划）
+  async function handleReviewStatusChange(record: any) {
+    try {
+      const detailResult = await getCaseDetail(record.id);
+      const { customFields } = detailResult;
+      const customFieldsList = customFields.map((item: any) => ({
+        fieldId: item.fieldId,
+        value: Array.isArray(item.defaultValue) ? JSON.stringify(item.defaultValue) : item.defaultValue,
+      }));
+      const params = {
+        request: {
+          ...detailResult,
+          reviewStatus: record.reviewStatus,
+          customFields: customFieldsList,
+        },
+        fileList: [],
+      };
+      await updateCaseRequest(params);
+      initData();
+      Message.success(t('common.updateSuccess'));
+    } catch (error) {
       console.log(error);
     }
   }

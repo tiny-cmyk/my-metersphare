@@ -84,6 +84,9 @@ public class FunctionalCaseAddRequest implements Serializable {
     @Schema(description = "执行结果")
     private String lastExecuteResult;
 
+    @Schema(description = "评审状态")
+    private String reviewStatus;
+
     @Schema(description = "是否是ai生成的用例")
     private Boolean aiCreate = false;
 }
