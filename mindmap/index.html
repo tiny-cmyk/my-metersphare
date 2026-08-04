@@ -1225,12 +1225,9 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
               caseG.appendChild(btnG);
             }
 
-            // hover & tooltip（显示完整用例名）
+            // hover 效果（不再需要 tooltip，文字已全部显示）
             caseG.addEventListener('mouseenter', () => caseRect.setAttribute('fill', isCaseExpanded ? '#EAFFEA' : '#FAFAFA'));
             caseG.addEventListener('mouseleave', () => caseRect.setAttribute('fill', caseFill));
-            caseG.addEventListener('mouseenter', (e) => showTooltip(e, c.name));
-            caseG.addEventListener('mousemove',  (e) => moveTooltip(e));
-            caseG.addEventListener('mouseleave', hideTooltip);
             // 点击选中用例（支持 Enter 新增 / Delete 删除）
             caseG.addEventListener('click', (e) => {
               e.stopPropagation();
