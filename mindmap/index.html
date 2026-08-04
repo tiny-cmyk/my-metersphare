@@ -856,23 +856,66 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
   $placeholder.style.display = 'none';
 
   const MM_ROW = 44;      // 模块行高
-  const MM_CASE_ROW = 36; // 用例行高
-  const MM_STEP_ROW = 30; // 步骤行高
+  const MM_CASE_ROW = 40; // 用例最小行高
+  const MM_STEP_ROW = 30; // 步骤最小行高
+  const MM_LINE_H = 18;   // 每行文字高度
+  const MM_PAD = 10;      // 节点上下内边距
   const MM_GAP = 6;       // 行间距
   const MM_W = 200;       // 节点宽度
-  const MM_CASE_W = 260;  // 用例节点宽度
-  const MM_STEP_W = 220;  // 步骤节点宽度
-  const MM_RESULT_W = 220; // 预期结果节点宽度
+  const MM_CASE_W = 280;  // 用例节点宽度
+  const MM_STEP_W = 260;  // 步骤节点宽度
+  const MM_RESULT_W = 260; // 预期结果节点宽度
   const MM_H_GAP = 50;    // 水平间距
+  const MM_CHAR_PER_LINE_CASE = 18;  // 用例名每行约字数
+  const MM_CHAR_PER_LINE_STEP = 20;  // 步骤/结果每行约字数
+
+  /** 估算文本需要几行（中文约2倍宽度） */
+  function calcLines(text, charsPerLine) {
+    if (!text) return 1;
+    // 粗略估算：中文字符宽度约为英文2倍
+    let w = 0;
+    for (const ch of text) { w += ch.charCodeAt(0) > 127 ? 2 : 1; }
+    return Math.max(1, Math.ceil(w / (charsPerLine * 1.6)));
+  }
+
+  /** 计算文本节点的实际高度 */
+  function calcTextNodeH(text, charsPerLine, minH) {
+    const lines = calcLines(text, charsPerLine);
+    return Math.max(minH, lines * MM_LINE_H + MM_PAD);
+  }
 
   /** 计算单个用例的高度（含展开的步骤，跳过空步骤） */
   function calcCaseH(c) {
-    if (!expandedCaseIds.has(c.id)) return MM_CASE_ROW;
+    const caseNameH = calcTextNodeH(c.name || '', MM_CHAR_PER_LINE_CASE, MM_CASE_ROW);
+    if (!expandedCaseIds.has(c.id)) return caseNameH;
     const steps = parseSteps(c.steps);
     const visibleSteps = steps.filter(s => (s.desc || s.description || '').trim() || (s.result || s.expected || '').trim());
-    if (visibleSteps.length === 0) return MM_CASE_ROW;
-    const stepsH = visibleSteps.length * MM_STEP_ROW + (visibleSteps.length - 1) * MM_GAP;
-    return Math.max(MM_CASE_ROW, stepsH);
+    if (visibleSteps.length === 0) return caseNameH;
+    let stepsH = 0;
+    visibleSteps.forEach((s, i) => {
+      const stepText = s.desc || s.description || '';
+      const resultText = (s.result || s.expected || '').split('\n')[0].trim();
+      const stepH = calcTextNodeH(stepText, MM_CHAR_PER_LINE_STEP, MM_STEP_ROW);
+      const resultH = resultText ? calcTextNodeH(resultText, MM_CHAR_PER_LINE_STEP, MM_STEP_ROW) : MM_STEP_ROW;
+      if (i > 0) stepsH += MM_GAP;
+      stepsH += Math.max(stepH, resultH);
+    });
+    return Math.max(caseNameH, stepsH);
+  }
+
+  /** 在 SVG 中创建自动换行文本节点（使用 foreignObject） */
+  function createWrappedText(x, y, w, h, text, fontSize, color) {
+    const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    fo.setAttribute('x', x);
+    fo.setAttribute('y', y);
+    fo.setAttribute('width', w);
+    fo.setAttribute('height', h);
+    fo.style.pointerEvents = 'none';
+    const div = document.createElement('div');
+    div.style.cssText = `font-size:${fontSize}px;color:${color};line-height:${MM_LINE_H}px;padding:${MM_PAD/2}px 0;word-break:break-word;overflow:hidden;`;
+    div.textContent = text;
+    fo.appendChild(div);
+    return fo;
   }
 
   // ── 递归计算子树高度 ──
@@ -1062,13 +1105,14 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
             const steps = parseSteps(c.steps);
             const hasSteps = steps.length > 0;
 
+            const caseNameH = calcTextNodeH(c.name || '', MM_CHAR_PER_LINE_CASE, MM_CASE_ROW);
             const caseG = svgEl('g', { style: 'cursor:default', 'data-tree-case-id': c.id });
 
-            // 用例背景
+            // 用例背景（高度根据文字行数动态计算）
             const caseFill = isCaseExpanded ? '#F6FFED' : '#fff';
             const caseStroke = isCaseExpanded ? '#B7EB8F' : '#E8E8E8';
             const caseRect = svgEl('rect', {
-              x: childX, y: caseCY - MM_CASE_ROW / 2 + 2, width: MM_CASE_W, height: MM_CASE_ROW - 4,
+              x: childX, y: caseCY - caseNameH / 2 + 2, width: MM_CASE_W, height: caseNameH - 4,
               rx: 4, fill: caseFill, stroke: caseStroke, 'stroke-width': 1,
               'pointer-events': 'all',
             });
@@ -1109,15 +1153,10 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
               }));
             }
 
-            // 用例名
-            const nameMaxW = MM_CASE_W - (hasSteps ? 50 : 30);
-            const caseLabel = truncateByPixel(c.name || '', nameMaxW);
-            const caseTxt = Object.assign(svgEl('text', {
-              x: childX + (pri ? 22 : 10), y: caseCY,
-              'dominant-baseline': 'middle',
-              'font-size': 12, fill: '#333', 'pointer-events': 'none',
-            }), { textContent: caseLabel });
-            caseG.appendChild(caseTxt);
+            // 用例名（全文显示，自动换行）
+            const nameX = childX + (pri ? 22 : 10);
+            const nameW = MM_CASE_W - (pri ? 22 : 10) - (hasSteps ? 30 : 8);
+            caseG.appendChild(createWrappedText(nameX, caseCY - caseNameH / 2 + 2, nameW, caseNameH - 4, c.name || '', 12, '#333'));
 
             // 双击编辑用例名
             if (!isReadonly) {
@@ -1241,21 +1280,19 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                 // 跳过步骤和结果都为空的行
                 if (!stepText && !resultText) { return; }
 
-                const stepCY = stepY + MM_STEP_ROW / 2;
+                // 动态计算步骤和结果节点高度
+                const stepNodeH = calcTextNodeH(stepText, MM_CHAR_PER_LINE_STEP, MM_STEP_ROW);
+                const resultNodeH = resultText ? calcTextNodeH(resultText, MM_CHAR_PER_LINE_STEP, MM_STEP_ROW) : MM_STEP_ROW;
+                const rowH = Math.max(stepNodeH, resultNodeH);
+                const stepCY = stepY + rowH / 2;
 
-                // 步骤节点（双击可编辑）
+                // 步骤节点（全文显示，双击可编辑）
                 const sG = svgEl('g', { style: 'cursor:pointer' });
                 sG.appendChild(svgEl('rect', {
-                  x: stepX, y: stepCY - MM_STEP_ROW / 2 + 2, width: MM_STEP_W, height: MM_STEP_ROW - 4,
+                  x: stepX, y: stepCY - rowH / 2 + 2, width: MM_STEP_W, height: rowH - 4,
                   rx: 4, fill: '#E6F4FF', stroke: '#91CAFF', 'stroke-width': 1, 'pointer-events': 'all',
                 }));
-                sG.appendChild(Object.assign(svgEl('text', {
-                  x: stepX + 8, y: stepCY, 'dominant-baseline': 'middle',
-                  'font-size': 11, fill: '#0958D9', 'pointer-events': 'none',
-                }), { textContent: truncateByPixel(stepText, MM_STEP_W - 16) }));
-                sG.addEventListener('mouseenter', (e) => showTooltip(e, stepText));
-                sG.addEventListener('mousemove',  (e) => moveTooltip(e));
-                sG.addEventListener('mouseleave', hideTooltip);
+                sG.appendChild(createWrappedText(stepX + 8, stepCY - rowH / 2 + 2, MM_STEP_W - 16, rowH - 4, stepText, 11, '#0958D9'));
                 // 点击选中步骤
                 sG.addEventListener('click', (e) => {
                   e.stopPropagation();
@@ -1273,20 +1310,14 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                 nodeLayer.appendChild(sG);
                 treeLine(lineLayer, caseRight, caseCY, stepX, stepCY);
 
-                // 预期结果节点（双击可编辑）
+                // 预期结果节点（全文显示，双击可编辑）
                 if (resultText) {
                   const rG = svgEl('g', { style: 'cursor:pointer' });
                   rG.appendChild(svgEl('rect', {
-                    x: resultX, y: stepCY - MM_STEP_ROW / 2 + 2, width: MM_RESULT_W, height: MM_STEP_ROW - 4,
+                    x: resultX, y: stepCY - rowH / 2 + 2, width: MM_RESULT_W, height: rowH - 4,
                     rx: 4, fill: '#F9F0FF', stroke: '#D3ADF7', 'stroke-width': 1, 'pointer-events': 'all',
                   }));
-                  rG.appendChild(Object.assign(svgEl('text', {
-                    x: resultX + 8, y: stepCY, 'dominant-baseline': 'middle',
-                    'font-size': 11, fill: '#531DAB', 'pointer-events': 'none',
-                  }), { textContent: truncateByPixel(resultText, MM_RESULT_W - 16) }));
-                  rG.addEventListener('mouseenter', (e) => showTooltip(e, resultText));
-                  rG.addEventListener('mousemove',  (e) => moveTooltip(e));
-                  rG.addEventListener('mouseleave', hideTooltip);
+                  rG.appendChild(createWrappedText(resultX + 8, stepCY - rowH / 2 + 2, MM_RESULT_W - 16, rowH - 4, resultText, 11, '#531DAB'));
                   // 点击选中预期结果
                   rG.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1305,7 +1336,7 @@ function renderModuleMap(parentModule, childModules, resetScale = true) {
                   treeLine(lineLayer, stepX + MM_STEP_W, stepCY, resultX, stepCY);
                 }
 
-                stepY += MM_STEP_ROW + MM_GAP;
+                stepY += rowH + MM_GAP;
               });
             }
 
