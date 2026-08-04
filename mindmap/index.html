@@ -2767,6 +2767,8 @@ function flashRefreshDot() {
 function startAutoRefresh() {
   stopAutoRefresh();
   autoRefreshTimer = setInterval(() => {
+    // 编辑中不刷新，避免销毁编辑框导致内容丢失
+    if (document.querySelector('.inline-editor')) return;
     if (currentModuleId) {
       loadCases(currentModuleId, '', true);  // 静默刷新
     }
