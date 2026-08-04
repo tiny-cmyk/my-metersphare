@@ -21,6 +21,9 @@
               {{ item.fieldName }}
             </a-option>
             <a-option key="systemTags" value="systemTags">{{ t('caseManagement.featureCase.tags') }}</a-option>
+            <a-option key="reviewStatus" value="reviewStatus">{{
+              t('caseManagement.featureCase.tableColumnReviewResult')
+            }}</a-option>
           </a-select>
         </a-form-item>
         <a-form-item
@@ -47,8 +50,26 @@
           <div class="text-[12px] leading-[20px] text-[var(--color-text-4)]">{{ t('ms.tagsInput.tagLimitTip') }}</div>
         </a-form-item>
 
+        <a-form-item
+          v-if="form.selectedAttrsId === 'reviewStatus'"
+          field="reviewStatusValue"
+          :label="t('common.batchUpdate')"
+          asterisk-position="end"
+          :rules="[{ required: true, message: t('caseManagement.featureCase.selectAttrsNotNull') }]"
+        >
+          <a-select v-model="form.reviewStatusValue" :placeholder="t('caseManagement.featureCase.PleaseSelect')">
+            <a-option v-for="(val, key) of statusIconMap" :key="key" :value="key">
+              {{ val.statusText }}
+            </a-option>
+          </a-select>
+        </a-form-item>
+
         <MsFormCreate
-          v-if="form.selectedAttrsId !== 'systemTags' && selectedTagType !== TagUpdateTypeEnum.CLEAR"
+          v-if="
+            form.selectedAttrsId !== 'systemTags' &&
+            form.selectedAttrsId !== 'reviewStatus' &&
+            selectedTagType !== TagUpdateTypeEnum.CLEAR
+          "
           ref="formCreateRef"
           v-model:api="fApi"
           v-model:form-item="formItem"
@@ -78,6 +99,7 @@
   import { TableQueryParams } from '@/models/common';
   import { TagUpdateTypeEnum } from '@/enums/commonEnum';
 
+  import { statusIconMap } from './utils';
   import Message from '@arco-design/web-vue/es/message';
 
   const isVisible = ref<boolean>(false);
@@ -102,6 +124,7 @@
     selectedAttrsId: '',
     append: false,
     tags: [],
+    reviewStatusValue: '',
   };
   const form = ref({ ...initForm });
 
@@ -205,7 +228,11 @@
             append: selectedTagType.value === TagUpdateTypeEnum.APPEND,
             tags: form.value.tags,
             moduleIds: props.activeFolder === 'all' ? [] : [props.activeFolder, ...props.offspringIds],
-            customField: form.value.selectedAttrsId === 'systemTags' ? {} : customField,
+            customField:
+              form.value.selectedAttrsId === 'systemTags' || form.value.selectedAttrsId === 'reviewStatus'
+                ? {}
+                : customField,
+            reviewStatus: form.value.selectedAttrsId === 'reviewStatus' ? form.value.reviewStatusValue : undefined,
             condition: {
               ...props.condition,
             },

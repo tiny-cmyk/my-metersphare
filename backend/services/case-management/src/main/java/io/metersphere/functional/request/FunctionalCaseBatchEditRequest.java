@@ -31,4 +31,7 @@ public class FunctionalCaseBatchEditRequest extends BaseFunctionalCaseBatchDTO {
 
     @Schema(description = "自定义字段")
     private CaseCustomFieldDTO customField;
+
+    @Schema(description = "评审状态（批量修改时使用）")
+    private String reviewStatus;
 }

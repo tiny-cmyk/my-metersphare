@@ -1097,6 +1097,14 @@ public class FunctionalCaseService {
             handleTags(request, userId, ids);
             //自定义字段处理
             handleCustomFields(request, userId, ids);
+            //评审状态处理
+            if (StringUtils.isNotBlank(request.getReviewStatus())) {
+                FunctionalCase reviewCase = new FunctionalCase();
+                reviewCase.setReviewStatus(request.getReviewStatus());
+                reviewCase.setUpdateTime(System.currentTimeMillis());
+                reviewCase.setUpdateUser(userId);
+                extFunctionalCaseMapper.batchUpdate(reviewCase, ids);
+            }
             //基本信息
             FunctionalCase functionalCase = new FunctionalCase();
             functionalCase.setProjectId(request.getProjectId());
