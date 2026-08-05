@@ -1100,6 +1100,7 @@ public class FunctionalCaseService {
             //评审状态处理
             if (StringUtils.isNotBlank(request.getReviewStatus())) {
                 FunctionalCase reviewCase = new FunctionalCase();
+                reviewCase.setProjectId(request.getProjectId());
                 reviewCase.setReviewStatus(request.getReviewStatus());
                 reviewCase.setUpdateTime(System.currentTimeMillis());
                 reviewCase.setUpdateUser(userId);
