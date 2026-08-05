@@ -848,11 +848,11 @@
       dataIndex: 'automationStatus',
       filterConfig: {
         options: [
-          { value: 'automatable', text: '可自动化' },
-          { value: 'automated', text: '已自动化' },
-          { value: 'manual', text: '需手工' },
-          { value: 'to_be_confirmed', text: '待确认' },
-          { value: 'not_applicable', text: '不涉及' },
+          { value: 'automatable', label: '可自动化' },
+          { value: 'automated', label: '已自动化' },
+          { value: 'manual', label: '需手工' },
+          { value: 'to_be_confirmed', label: '待确认' },
+          { value: 'not_applicable', label: '不涉及' },
         ],
       },
       showInTable: true,
