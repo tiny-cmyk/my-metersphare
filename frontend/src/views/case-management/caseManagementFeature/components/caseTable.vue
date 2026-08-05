@@ -2015,9 +2015,7 @@
     automationStatusFields.value = result.customFields.find(
       (item: any) => item.internal && item.internalFieldKey === 'automation_status'
     );
-    if (automationStatusColumn[0].filterConfig?.options) {
-      automationStatusColumn[0].filterConfig.options = cloneDeep(unref(automationStatusFields.value?.options)) || [];
-    }
+    // 筛选选项已在列定义中写死，不再用 API 返回值覆盖（API 可能不返回 internalFieldKey）
 
     fullColumns = [
       ...firstStaticColumn,
