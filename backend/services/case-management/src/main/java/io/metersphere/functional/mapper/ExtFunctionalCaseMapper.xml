@@ -261,6 +261,15 @@
                             <include refid="io.metersphere.system.mapper.BaseMapper.filterInWrapper"/>
                             )
                         </when>
+                        <!-- 是否自动化 -->
+                        <when test="key=='automationStatus'">
+                            and functional_case.id in (
+                            select fccf.case_id from functional_case_custom_field fccf
+                            inner join custom_field cf on cf.id = fccf.field_id and cf.name = 'automation_status'
+                            where fccf.`value` in
+                            <include refid="io.metersphere.system.mapper.BaseMapper.filterInWrapper"/>
+                            )
+                        </when>
                         <!-- 标签 -->
                         <when test="key=='tags'">
                             and (
