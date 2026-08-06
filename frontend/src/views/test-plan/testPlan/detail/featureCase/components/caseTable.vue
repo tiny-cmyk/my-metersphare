@@ -345,6 +345,7 @@
       width: 150,
       showTooltip: true,
       showDrag: true,
+      showInTable: false,
     },
     {
       title: 'case.caseLevel',
@@ -368,7 +369,7 @@
       title: 'caseManagement.featureCase.tableColumnCreateTime',
       slotName: 'createTime',
       dataIndex: 'createTime',
-      showInTable: true,
+      showInTable: false,
       sortable: {
         sortDirections: ['ascend', 'descend'],
         sorter: true,
@@ -384,7 +385,7 @@
         sortDirections: ['ascend', 'descend'],
         sorter: true,
       },
-      showInTable: true,
+      showInTable: false,
       width: 200,
       showDrag: true,
     },
@@ -407,6 +408,7 @@
       showTooltip: true,
       width: 200,
       showDrag: true,
+      showInTable: false,
     },
     {
       title: 'common.belongProject',
