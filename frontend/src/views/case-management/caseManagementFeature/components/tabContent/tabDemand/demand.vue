@@ -57,6 +57,29 @@
       :platform-info="platformInfo"
       @save="handleDrawerConfirm"
     />
+    <!-- 需求文档查看弹窗（非 URL 内容展示） -->
+    <a-modal
+      v-model:visible="demandDocVisible"
+      :title="demandDocTitle"
+      :footer="false"
+      :width="680"
+      :mask-closable="true"
+    >
+      <div
+        style="
+          overflow-y: auto;
+          padding: 8px 0;
+          max-height: 500px;
+          font-size: 13px;
+          white-space: pre-wrap;
+          color: #333333;
+          word-break: break-word;
+          line-height: 1.6;
+        "
+      >
+        {{ demandDocContent }}
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -130,9 +153,19 @@
     linkDemandDrawer.value = true;
   }
 
+  const demandDocVisible = ref(false);
+  const demandDocContent = ref('');
+  const demandDocTitle = ref('');
+
   function openDemandUrl(record: DemandItem) {
-    if (record.demandUrl) {
+    if (!record.demandUrl) return;
+    // 如果是有效 URL（以 http 开头）则跳转，否则弹窗展示文本内容
+    if (/^https?:\/\//i.test(record.demandUrl.trim())) {
       window.open(record.demandUrl);
+    } else {
+      demandDocTitle.value = record.demandName || '需求文档';
+      demandDocContent.value = record.demandUrl;
+      demandDocVisible.value = true;
     }
   }
 
