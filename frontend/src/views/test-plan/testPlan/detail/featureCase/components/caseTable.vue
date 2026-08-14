@@ -914,6 +914,7 @@
       });
       Message.success(t('common.updateSuccess'));
       emit('refresh');
+      refresh(false);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.log(error);
