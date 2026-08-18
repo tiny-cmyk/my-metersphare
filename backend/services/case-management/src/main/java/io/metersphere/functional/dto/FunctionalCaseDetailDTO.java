@@ -131,4 +131,7 @@ public class FunctionalCaseDetailDTO implements Serializable {
 
     @Schema(description = "执行结果")
     private String lastExecuteResult;
+
+    @Schema(description = "自定义用例编号")
+    private String customNum;
 }

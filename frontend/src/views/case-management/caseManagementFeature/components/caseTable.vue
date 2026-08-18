@@ -91,12 +91,14 @@
           @filter-change="filterChange"
         >
           <template #num="{ record }">
-            <div class="flex items-center gap-[8px]">
-              <MsAiTag v-if="record.aiCreate" />
-              <span type="text" class="one-line-text cursor-pointer px-0 text-[rgb(var(--primary-5))]">
-                {{ record.customNum || record.num }}
-              </span>
-            </div>
+            <a-tooltip :content="String(record.customNum || record.num)" position="top" mini>
+              <div class="flex items-center gap-[8px]">
+                <MsAiTag v-if="record.aiCreate" />
+                <span type="text" class="one-line-text cursor-pointer px-0 text-[rgb(var(--primary-5))]">
+                  {{ record.customNum || record.num }}
+                </span>
+              </div>
+            </a-tooltip>
           </template>
           <template #name="{ record }">
             <div class="one-line-text">{{ record.name }}</div>
@@ -806,7 +808,7 @@
         sorter: true,
       },
       'width': 150,
-      'showTooltip': true,
+      'showTooltip': false,
       'columnSelectorDisabled': true,
       'filter-icon-align-left': true,
     },
