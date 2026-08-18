@@ -25,6 +25,7 @@
     <result column="create_time" jdbcType="BIGINT" property="createTime" />
     <result column="update_time" jdbcType="BIGINT" property="updateTime" />
     <result column="delete_time" jdbcType="BIGINT" property="deleteTime" />
+    <result column="custom_num" jdbcType="VARCHAR" property="customNum" />
   </resultMap>
   <sql id="Example_Where_Clause">
     <where>
@@ -123,9 +124,9 @@
     </where>
   </sql>
   <sql id="Base_Column_List">
-    id, num, module_id, project_id, template_id, `name`, review_status, tags, case_edit_type, 
-    pos, version_id, ref_id, last_execute_result, deleted, ai_create, public_case, latest, 
-    create_user, update_user, delete_user, create_time, update_time, delete_time
+    id, num, module_id, project_id, template_id, `name`, review_status, tags, case_edit_type,
+    pos, version_id, ref_id, last_execute_result, deleted, ai_create, public_case, latest,
+    create_user, update_user, delete_user, create_time, update_time, delete_time, custom_num
   </sql>
   <select id="selectByExample" parameterType="io.metersphere.functional.domain.FunctionalCaseExample" resultMap="BaseResultMap">
     select
@@ -247,6 +248,9 @@
       <if test="deleteTime != null">
         delete_time,
       </if>
+      <if test="customNum != null">
+        custom_num,
+      </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="id != null">
@@ -317,6 +321,9 @@
       </if>
       <if test="deleteTime != null">
         #{deleteTime,jdbcType=BIGINT},
+      </if>
+      <if test="customNum != null">
+        #{customNum,jdbcType=VARCHAR},
       </if>
     </trim>
   </insert>
@@ -500,6 +507,9 @@
       </if>
       <if test="deleteTime != null">
         delete_time = #{deleteTime,jdbcType=BIGINT},
+      </if>
+      <if test="customNum != null">
+        custom_num = #{customNum,jdbcType=VARCHAR},
       </if>
     </set>
     where id = #{id,jdbcType=VARCHAR}

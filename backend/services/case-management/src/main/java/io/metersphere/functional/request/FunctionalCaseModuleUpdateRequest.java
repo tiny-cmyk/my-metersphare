@@ -24,5 +24,8 @@ public class FunctionalCaseModuleUpdateRequest implements Serializable {
     @Schema(description = "模块名称", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotEmpty(message = "{file_module.name.not_blank}")
     private String name;
+
+    @Schema(description = "用例编号前缀")
+    private String casePrefix;
 }
 

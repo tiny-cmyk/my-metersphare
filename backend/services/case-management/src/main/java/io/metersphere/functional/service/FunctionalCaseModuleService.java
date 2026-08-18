@@ -108,6 +108,16 @@ public class FunctionalCaseModuleService extends ModuleTreeService {
         functionalCaseModuleLogService.updateModuleLog(updateModule, userId);
     }
 
+    public void updatePrefix(FunctionalCaseModuleUpdateRequest request, String userId) {
+        FunctionalCaseModule updateModule = functionalCaseModuleMapper.selectByPrimaryKey(request.getId());
+        if (updateModule == null) {
+            throw new MSException(Translator.get("case_module.not.exist"));
+        }
+        // 使用直接 SQL 更新，支持将 casePrefix 设置为 null（清空前缀）
+        String prefix = StringUtils.isBlank(request.getCasePrefix()) ? null : request.getCasePrefix().trim();
+        extFunctionalCaseModuleMapper.updateCasePrefix(request.getId(), prefix);
+    }
+
     public void moveNode(NodeMoveRequest request, String userId) {
         NodeSortDTO nodeSortDTO = super.getNodeSortDTO(request,
                 extFunctionalCaseModuleMapper::selectBaseModuleById,

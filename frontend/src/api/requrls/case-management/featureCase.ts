@@ -34,6 +34,8 @@ export const GetCaseModuleTreeUrl = '/functional/case/module/tree';
 export const CreateCaseModuleTreeUrl = '/functional/case/module/add';
 // 更新模块树
 export const UpdateCaseModuleTreeUrl = '/functional/case/module/update';
+// 更新模块前缀
+export const UpdateCaseModulePrefixUrl = '/functional/case/module/update/prefix';
 // 移动模块
 export const MoveCaseModuleTreeUrl = '/functional/case/module/move';
 // 回收站-模块-获取模块树

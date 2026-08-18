@@ -47,6 +47,17 @@
     </select>
 
 
+    <select id="getMaxCustomNumSeq" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(
+            CAST(SUBSTRING(custom_num, LENGTH(#{prefix}) + 2) AS UNSIGNED)
+        ), 0)
+        FROM functional_case
+        WHERE module_id = #{moduleId}
+          AND custom_num IS NOT NULL
+          AND custom_num LIKE CONCAT(#{prefix}, '\_%')
+          AND deleted = false
+    </select>
+
     <update id="updateFunctionalCaseModule">
         UPDATE functional_case
         SET module_id = #{moduleId}
@@ -117,7 +128,8 @@
         functional_case.delete_time,
         functional_case.tags,
         functional_case.project_id,
-        functional_case.ai_create
+        functional_case.ai_create,
+        functional_case.custom_num
         FROM
             functional_case
         LEFT JOIN project_version ON  functional_case.version_id = project_version.id

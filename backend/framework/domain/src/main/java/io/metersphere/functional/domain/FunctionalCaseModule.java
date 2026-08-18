@@ -46,6 +46,10 @@ public class FunctionalCaseModule implements Serializable {
     @Schema(description = "更新人")
     private String updateUser;
 
+    @Schema(description = "用例编号前缀")
+    @Size(max = 100, message = "{functional_case_module.case_prefix.length_range}", groups = {Created.class, Updated.class})
+    private String casePrefix;
+
     private static final long serialVersionUID = 1L;
 
     public enum Column {
@@ -57,7 +61,8 @@ public class FunctionalCaseModule implements Serializable {
         createTime("create_time", "createTime", "BIGINT", false),
         updateTime("update_time", "updateTime", "BIGINT", false),
         createUser("create_user", "createUser", "VARCHAR", false),
-        updateUser("update_user", "updateUser", "VARCHAR", false);
+        updateUser("update_user", "updateUser", "VARCHAR", false),
+        casePrefix("case_prefix", "casePrefix", "VARCHAR", false);
 
         private static final String BEGINNING_DELIMITER = "`";
 

@@ -105,6 +105,10 @@ public class FunctionalCase implements Serializable {
     @Schema(description = "删除时间")
     private Long deleteTime;
 
+    @Schema(description = "自定义用例编号")
+    @Size(max = 255, message = "{functional_case.custom_num.length_range}", groups = {Created.class, Updated.class})
+    private String customNum;
+
     private static final long serialVersionUID = 1L;
 
     public enum Column {
@@ -130,7 +134,8 @@ public class FunctionalCase implements Serializable {
         deleteUser("delete_user", "deleteUser", "VARCHAR", false),
         createTime("create_time", "createTime", "BIGINT", false),
         updateTime("update_time", "updateTime", "BIGINT", false),
-        deleteTime("delete_time", "deleteTime", "BIGINT", false);
+        deleteTime("delete_time", "deleteTime", "BIGINT", false),
+        customNum("custom_num", "customNum", "VARCHAR", false);
 
         private static final String BEGINNING_DELIMITER = "`";
 

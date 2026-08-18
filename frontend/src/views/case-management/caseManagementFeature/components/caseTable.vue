@@ -94,7 +94,7 @@
             <div class="flex items-center gap-[8px]">
               <MsAiTag v-if="record.aiCreate" />
               <span type="text" class="one-line-text cursor-pointer px-0 text-[rgb(var(--primary-5))]">
-                {{ record.num }}
+                {{ record.customNum || record.num }}
               </span>
             </div>
           </template>

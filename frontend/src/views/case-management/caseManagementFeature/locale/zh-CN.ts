@@ -11,6 +11,12 @@ export default {
   'caseManagement.featureCase.caseEmptyRecycle': '暂无用例数据',
   'caseManagement.featureCase.addSubModule': '添加子模块',
   'caseManagement.featureCase.rename': '重命名',
+  'caseManagement.featureCase.setPrefix': '设置编号前缀',
+  'caseManagement.featureCase.setCasePrefix': '设置用例编号前缀',
+  'caseManagement.featureCase.casePrefix': '编号前缀',
+  'caseManagement.featureCase.casePrefixPlaceholder': '例如：SIGMA_FUN_REC_BOX',
+  'caseManagement.featureCase.casePrefixTip':
+    '设置后，在此模块下创建的用例将自动生成 前缀_序号 格式的编号（如 SIGMA_FUN_REC_BOX_001）。清空则恢复默认数字编号。',
   'caseManagement.featureCase.versionPlaceholder': '默认为最新版本',
   'caseManagement.featureCase.searchByNameAndId': '通过 ID/名称/标签搜索',
   'caseManagement.featureCase.searchByIdAndName': '通过 ID/名称搜索',

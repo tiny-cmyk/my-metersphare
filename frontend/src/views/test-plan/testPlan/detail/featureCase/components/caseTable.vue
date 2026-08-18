@@ -45,7 +45,7 @@
         @sorter-change="handleSorterChange"
       >
         <template #num="{ record }">
-          <MsButton type="text" @click="toCaseDetail(record)">{{ record.num }}</MsButton>
+          <MsButton type="text" @click="toCaseDetail(record)">{{ record.customNum || record.num }}</MsButton>
         </template>
         <template #[FilterSlotNameEnum.CASE_MANAGEMENT_CASE_LEVEL]="{ filterContent }">
           <CaseLevel :case-level="filterContent.value" />

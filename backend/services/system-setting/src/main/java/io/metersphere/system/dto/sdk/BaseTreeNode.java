@@ -40,6 +40,9 @@ public class BaseTreeNode {
     @Schema(description = "节点路径（当前节点所在整棵树的路径）")
     private String path = "/";
 
+    @Schema(description = "用例编号前缀")
+    private String casePrefix;
+
     public void genModulePath(BaseTreeNode parentNode) {
         if (parentNode != null) {
             path = parentNode.getPath() + "/" + this.getName();

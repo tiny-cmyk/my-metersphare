@@ -76,6 +76,26 @@
         </MsPopConfirm>
       </template>
     </MsTree>
+    <a-modal
+      v-model:visible="prefixModalVisible"
+      :title="t('caseManagement.featureCase.setCasePrefix')"
+      :ok-loading="prefixSaving"
+      @ok="savePrefixHandler"
+    >
+      <a-form :model="{ prefix: prefixValue }" layout="vertical">
+        <a-form-item :label="t('caseManagement.featureCase.casePrefix')">
+          <a-input
+            v-model="prefixValue"
+            :placeholder="t('caseManagement.featureCase.casePrefixPlaceholder')"
+            :max-length="100"
+            allow-clear
+          />
+        </a-form-item>
+      </a-form>
+      <div class="text-[12px] text-[var(--color-text-4)]">
+        {{ t('caseManagement.featureCase.casePrefixTip') }}
+      </div>
+    </a-modal>
   </a-spin>
 </template>
 
@@ -95,6 +115,7 @@
     deleteCaseModuleTree,
     getCaseModuleTree,
     moveCaseModuleTree,
+    updateCaseModulePrefix,
     updateCaseModuleTree,
   } from '@/api/modules/case-management/featureCase';
   import { useI18n } from '@/hooks/useI18n';
@@ -151,6 +172,11 @@
     {
       label: 'caseManagement.featureCase.rename',
       eventTag: 'rename',
+      permission: ['FUNCTIONAL_CASE:READ+UPDATE'],
+    },
+    {
+      label: 'caseManagement.featureCase.setPrefix',
+      eventTag: 'setPrefix',
       permission: ['FUNCTIONAL_CASE:READ+UPDATE'],
     },
     {
@@ -303,6 +329,39 @@
     emits('caseNodeSelect', selectedKeys, offspringIds, node);
   };
 
+  // 设置前缀相关
+  const prefixModalVisible = ref(false);
+  const prefixValue = ref('');
+  const prefixNodeId = ref('');
+  const prefixNodeName = ref('');
+  const prefixSaving = ref(false);
+
+  function showPrefixModal(node: MsTreeNodeData) {
+    prefixNodeId.value = node.id || '';
+    prefixNodeName.value = node.name || '';
+    prefixValue.value = node.casePrefix || '';
+    prefixModalVisible.value = true;
+  }
+
+  async function savePrefixHandler() {
+    try {
+      prefixSaving.value = true;
+      await updateCaseModulePrefix({
+        id: prefixNodeId.value,
+        name: prefixNodeName.value,
+        casePrefix: prefixValue.value,
+      });
+      Message.success(t('common.updateSuccess'));
+      prefixModalVisible.value = false;
+      initModules();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    } finally {
+      prefixSaving.value = false;
+    }
+  }
+
   // 用例树节点更多事件
   const handleCaseMoreSelect = (item: ActionsItem, node: MsTreeNodeData) => {
     switch (item.eventTag) {
@@ -314,6 +373,10 @@
         renameCaseName.value = node.name || '';
         renamePopVisible.value = true;
         document.querySelector(`#renameSpan${node.id}`)?.dispatchEvent(new Event('click'));
+        break;
+      case 'setPrefix':
+        showPrefixModal(node);
+        resetFocusNodeKey();
         break;
       default:
         break;

@@ -41,4 +41,6 @@ public interface ExtFunctionalCaseModuleMapper {
     void batchUpdateStringColumn(@Param("column") String column, @Param("ids") List<String> ids, @Param("value") String value);
 
     List<FunctionalCaseModule> getNameInfoByIds(@Param("ids") List<String> ids);
+
+    void updateCasePrefix(@Param("id") String id, @Param("casePrefix") String casePrefix);
 }

@@ -5,7 +5,12 @@
     :width="860"
     :footer="false"
     :mask="false"
-    :title="t('caseManagement.featureCase.caseDetailTitle', { id: detailInfo?.num, name: detailInfo?.name })"
+    :title="
+      t('caseManagement.featureCase.caseDetailTitle', {
+        id: detailInfo?.customNum || detailInfo?.num,
+        name: detailInfo?.name,
+      })
+    "
     :detail-id="props.detailId"
     :detail-index="props.detailIndex"
     :get-detail-func="getCaseDetail"
@@ -50,7 +55,7 @@
           @keydown.enter="handleEditName"
         />
         <div v-else class="flex items-center overflow-hidden">
-          <div> [ {{ detailInfo?.num }} ] </div>
+          <div> [ {{ detailInfo?.customNum || detailInfo?.num }} ] </div>
           <div
             :class="`${
               hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE']) ? 'hover-title-name' : ''

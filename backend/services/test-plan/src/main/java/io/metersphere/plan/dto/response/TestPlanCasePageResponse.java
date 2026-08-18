@@ -103,4 +103,7 @@ public class TestPlanCasePageResponse implements Serializable {
 
     @Schema(description = "测试集名称")
     private String testPlanCollectionName;
+
+    @Schema(description = "自定义用例编号")
+    private String customNum;
 }

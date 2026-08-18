@@ -24,6 +24,8 @@ public interface ExtFunctionalCaseMapper {
 
     Long getPos(@Param("projectId") String projectId);
 
+    Long getMaxCustomNumSeq(@Param("moduleId") String moduleId, @Param("prefix") String prefix);
+
     void updateFunctionalCaseModule(@Param("refId") String refId, @Param("moduleId") String moduleId);
 
     List<FunctionalCaseVersionDTO> getFunctionalCaseByRefId(@Param("refId") String refId);

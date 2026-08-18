@@ -65,6 +65,14 @@ public class FunctionalCaseModuleController {
         functionalCaseModuleService.deleteModule(moduleId, SessionUtils.getUserId());
     }
 
+    @PostMapping("/update/prefix")
+    @Operation(summary = "用例管理-功能用例-模块-设置用例编号前缀")
+    @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ_UPDATE)
+    @CheckOwner(resourceId = "#request.getId()", resourceType = "functional_case_module")
+    public void updatePrefix(@RequestBody @Validated FunctionalCaseModuleUpdateRequest request) {
+        functionalCaseModuleService.updatePrefix(request, SessionUtils.getUserId());
+    }
+
     @GetMapping("/trash/tree/{projectId}")
     @Operation(summary = "用例管理-功能用例-回收站-模块-获取模块树")
     @RequiresPermissions(PermissionConstants.FUNCTIONAL_CASE_READ)

@@ -11,6 +11,12 @@ export default {
     'No use case data yet, please click the button above to create or import',
   'caseManagement.featureCase.addSubModule': 'Add submodules',
   'caseManagement.featureCase.rename': 'rename',
+  'caseManagement.featureCase.setPrefix': 'Set ID prefix',
+  'caseManagement.featureCase.setCasePrefix': 'Set Case ID Prefix',
+  'caseManagement.featureCase.casePrefix': 'ID Prefix',
+  'caseManagement.featureCase.casePrefixPlaceholder': 'e.g. SIGMA_FUN_REC_BOX',
+  'caseManagement.featureCase.casePrefixTip':
+    'Cases created under this module will use prefix_sequence format (e.g. SIGMA_FUN_REC_BOX_001). Clear to use default numeric IDs.',
   'caseManagement.featureCase.versionPlaceholder': 'The default is the latest version',
   'caseManagement.featureCase.searchByNameAndId': 'Search by ID, name, or tag',
   'caseManagement.featureCase.searchByIdAndName': 'Search by ID or name',

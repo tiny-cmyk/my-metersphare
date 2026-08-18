@@ -81,6 +81,7 @@ export interface ModuleTreeNode extends TreeNodeData {
   count: 0;
   parentId: string;
   path: string;
+  casePrefix?: string;
 }
 // 拖拽排序
 export type MoveMode = 'BEFORE' | 'AFTER' | 'APPEND';

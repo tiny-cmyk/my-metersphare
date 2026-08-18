@@ -212,6 +212,7 @@ export interface PlanDetailFeatureCaseItem {
   testPlanId: string;
   testPlanCollectionName: string; // 测试集名称
   bugList: CaseBugItem[];
+  customNum?: string; // 自定义用例编号
 }
 
 export interface PlanDetailFeatureCaseListQueryParams extends TableQueryParams, TestPlanBaseParams {}

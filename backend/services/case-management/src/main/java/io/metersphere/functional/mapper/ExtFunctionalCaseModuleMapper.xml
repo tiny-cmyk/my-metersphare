@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.metersphere.functional.mapper.ExtFunctionalCaseModuleMapper">
     <select id="selectBaseByProjectId" resultType="io.metersphere.system.dto.sdk.BaseTreeNode">
-        SELECT id, name, parent_id AS parentId, 'module' AS type
+        SELECT id, name, parent_id AS parentId, 'module' AS type, case_prefix AS casePrefix
         FROM functional_case_module
         WHERE project_id = #{projectId}
         ORDER BY pos
@@ -145,4 +145,10 @@
             #{id}
         </foreach>
     </select>
+
+    <update id="updateCasePrefix">
+        UPDATE functional_case_module
+        SET case_prefix = #{casePrefix,jdbcType=VARCHAR}
+        WHERE id = #{id}
+    </update>
 </mapper>
