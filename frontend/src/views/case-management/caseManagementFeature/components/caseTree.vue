@@ -1,104 +1,102 @@
 <template>
-  <div>
-    <a-spin class="w-full" :loading="loading">
-      <a-input
-        v-if="props.isModal"
-        v-model:model-value="moduleKeyword"
-        :placeholder="t('caseManagement.caseReview.folderSearchPlaceholder')"
-        allow-clear
-        class="mb-[16px]"
-        :max-length="255"
-      />
-      <MsTree
-        ref="msTreeRef"
-        v-model:focus-node-key="focusNodeKey"
-        :selected-keys="props.selectedKeys"
-        :init-expanded-keys="initExpandedKeys"
-        :data="caseTree"
-        :keyword="moduleKeyword"
-        :node-more-actions="caseMoreActions"
-        :expand-all="props.isExpandAll"
-        :empty-text="t('common.noData')"
-        :draggable="!props.isModal && hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE'])"
-        :virtual-list-props="virtualListProps"
-        block-node
-        :field-names="{
-          title: 'name',
-          key: 'id',
-          children: 'children',
-          count: 'count',
-        }"
-        title-tooltip-position="top"
-        @select="caseNodeSelect"
-        @more-action-select="handleCaseMoreSelect"
-        @more-actions-close="moreActionsClose"
-        @drop="handleDrag"
-      >
-        <template #title="nodeData">
-          <div class="inline-flex w-full gap-[8px]">
-            <div class="one-line-text w-full text-[var(--color-text-1)]">{{ nodeData.name }}</div>
-            <div v-if="!props.isModal" class="ms-tree-node-count ml-[4px] text-[var(--color-text-brand)]">
-              {{ nodeData.count || 0 }}
-            </div>
-          </div>
-        </template>
-        <template v-if="!props.isModal" #extra="nodeData">
-          <MsPopConfirm
-            v-if="hasAnyPermission(['FUNCTIONAL_CASE:READ+ADD'])"
-            :is-delete="false"
-            :all-names="(nodeData.children || []).map((e: ModuleTreeNode) => e.name || '')"
-            :title="t('caseManagement.featureCase.addSubModule')"
-            :ok-text="t('common.confirm')"
-            :field-config="{
-              placeholder: t('caseManagement.featureCase.addGroupTip'),
-              nameExistTipText: t('project.fileManagement.nameExist'),
-            }"
-            :loading="confirmLoading"
-            @confirm="addSubModule"
-            @cancel="resetFocusNodeKey"
-          >
-            <MsButton type="icon" size="mini" class="ms-tree-node-extra__btn !mr-0" @click="setFocusKey(nodeData)">
-              <MsIcon type="icon-icon_add_outlined" size="14" class="text-[var(--color-text-4)]" />
-            </MsButton>
-          </MsPopConfirm>
-          <MsPopConfirm
-            v-if="hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE'])"
-            :title="t('caseManagement.featureCase.rename')"
-            :all-names="(nodeData.parent? nodeData.parent.children || [] : caseTree).filter((e: ModuleTreeNode) => e.id !== nodeData.id).map((e: ModuleTreeNode) => e.name || '')"
-            :is-delete="false"
-            :node-id="nodeData.id"
-            :ok-text="t('common.confirm')"
-            :field-config="{ field: renameCaseName, nameExistTipText: t('project.fileManagement.nameExist') }"
-            :loading="confirmLoading"
-            @confirm="updateNameModule"
-            @cancel="resetFocusNodeKey"
-          >
-            <span :id="`renameSpan${nodeData.id}`" class="relative"></span>
-          </MsPopConfirm>
-        </template>
-      </MsTree>
-    </a-spin>
-    <a-modal
-      v-model:visible="prefixModalVisible"
-      :title="t('caseManagement.featureCase.setCasePrefix')"
-      :ok-loading="prefixSaving"
-      @ok="savePrefixHandler"
+  <a-spin class="w-full" :loading="loading">
+    <a-input
+      v-if="props.isModal"
+      v-model:model-value="moduleKeyword"
+      :placeholder="t('caseManagement.caseReview.folderSearchPlaceholder')"
+      allow-clear
+      class="mb-[16px]"
+      :max-length="255"
+    />
+    <MsTree
+      ref="msTreeRef"
+      v-model:focus-node-key="focusNodeKey"
+      :selected-keys="props.selectedKeys"
+      :init-expanded-keys="initExpandedKeys"
+      :data="caseTree"
+      :keyword="moduleKeyword"
+      :node-more-actions="caseMoreActions"
+      :expand-all="props.isExpandAll"
+      :empty-text="t('common.noData')"
+      :draggable="!props.isModal && hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE'])"
+      :virtual-list-props="virtualListProps"
+      block-node
+      :field-names="{
+        title: 'name',
+        key: 'id',
+        children: 'children',
+        count: 'count',
+      }"
+      title-tooltip-position="top"
+      @select="caseNodeSelect"
+      @more-action-select="handleCaseMoreSelect"
+      @more-actions-close="moreActionsClose"
+      @drop="handleDrag"
     >
-      <a-form :model="{ prefix: prefixValue }" layout="vertical">
-        <a-form-item :label="t('caseManagement.featureCase.casePrefix')">
-          <a-input
-            v-model="prefixValue"
-            :placeholder="t('caseManagement.featureCase.casePrefixPlaceholder')"
-            :max-length="100"
-            allow-clear
-          />
-        </a-form-item>
-      </a-form>
-      <div class="text-[12px] text-[var(--color-text-4)]">
-        {{ t('caseManagement.featureCase.casePrefixTip') }}
-      </div>
-    </a-modal>
-  </div>
+      <template #title="nodeData">
+        <div class="inline-flex w-full gap-[8px]">
+          <div class="one-line-text w-full text-[var(--color-text-1)]">{{ nodeData.name }}</div>
+          <div v-if="!props.isModal" class="ms-tree-node-count ml-[4px] text-[var(--color-text-brand)]">
+            {{ nodeData.count || 0 }}
+          </div>
+        </div>
+      </template>
+      <template v-if="!props.isModal" #extra="nodeData">
+        <MsPopConfirm
+          v-if="hasAnyPermission(['FUNCTIONAL_CASE:READ+ADD'])"
+          :is-delete="false"
+          :all-names="(nodeData.children || []).map((e: ModuleTreeNode) => e.name || '')"
+          :title="t('caseManagement.featureCase.addSubModule')"
+          :ok-text="t('common.confirm')"
+          :field-config="{
+            placeholder: t('caseManagement.featureCase.addGroupTip'),
+            nameExistTipText: t('project.fileManagement.nameExist'),
+          }"
+          :loading="confirmLoading"
+          @confirm="addSubModule"
+          @cancel="resetFocusNodeKey"
+        >
+          <MsButton type="icon" size="mini" class="ms-tree-node-extra__btn !mr-0" @click="setFocusKey(nodeData)">
+            <MsIcon type="icon-icon_add_outlined" size="14" class="text-[var(--color-text-4)]" />
+          </MsButton>
+        </MsPopConfirm>
+        <MsPopConfirm
+          v-if="hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE'])"
+          :title="t('caseManagement.featureCase.rename')"
+          :all-names="(nodeData.parent? nodeData.parent.children || [] : caseTree).filter((e: ModuleTreeNode) => e.id !== nodeData.id).map((e: ModuleTreeNode) => e.name || '')"
+          :is-delete="false"
+          :node-id="nodeData.id"
+          :ok-text="t('common.confirm')"
+          :field-config="{ field: renameCaseName, nameExistTipText: t('project.fileManagement.nameExist') }"
+          :loading="confirmLoading"
+          @confirm="updateNameModule"
+          @cancel="resetFocusNodeKey"
+        >
+          <span :id="`renameSpan${nodeData.id}`" class="relative"></span>
+        </MsPopConfirm>
+      </template>
+    </MsTree>
+  </a-spin>
+  <a-modal
+    v-model:visible="prefixModalVisible"
+    :title="t('caseManagement.featureCase.setCasePrefix')"
+    :ok-loading="prefixSaving"
+    @ok="savePrefixHandler"
+  >
+    <a-form :model="{ prefix: prefixValue }" layout="vertical">
+      <a-form-item :label="t('caseManagement.featureCase.casePrefix')">
+        <a-input
+          v-model="prefixValue"
+          :placeholder="t('caseManagement.featureCase.casePrefixPlaceholder')"
+          :max-length="100"
+          allow-clear
+        />
+      </a-form-item>
+    </a-form>
+    <div class="text-[12px] text-[var(--color-text-4)]">
+      {{ t('caseManagement.featureCase.casePrefixTip') }}
+    </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
