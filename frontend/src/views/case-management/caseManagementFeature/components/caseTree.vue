@@ -76,27 +76,28 @@
         </MsPopConfirm>
       </template>
     </MsTree>
+    <a-modal
+      v-model:visible="prefixModalVisible"
+      :title="t('caseManagement.featureCase.setCasePrefix')"
+      :ok-loading="prefixSaving"
+      :render-to-body="true"
+      @ok="savePrefixHandler"
+    >
+      <a-form :model="{ prefix: prefixValue }" layout="vertical">
+        <a-form-item :label="t('caseManagement.featureCase.casePrefix')">
+          <a-input
+            v-model="prefixValue"
+            :placeholder="t('caseManagement.featureCase.casePrefixPlaceholder')"
+            :max-length="100"
+            allow-clear
+          />
+        </a-form-item>
+      </a-form>
+      <div class="text-[12px] text-[var(--color-text-4)]">
+        {{ t('caseManagement.featureCase.casePrefixTip') }}
+      </div>
+    </a-modal>
   </a-spin>
-  <a-modal
-    v-model:visible="prefixModalVisible"
-    :title="t('caseManagement.featureCase.setCasePrefix')"
-    :ok-loading="prefixSaving"
-    @ok="savePrefixHandler"
-  >
-    <a-form :model="{ prefix: prefixValue }" layout="vertical">
-      <a-form-item :label="t('caseManagement.featureCase.casePrefix')">
-        <a-input
-          v-model="prefixValue"
-          :placeholder="t('caseManagement.featureCase.casePrefixPlaceholder')"
-          :max-length="100"
-          allow-clear
-        />
-      </a-form-item>
-    </a-form>
-    <div class="text-[12px] text-[var(--color-text-4)]">
-      {{ t('caseManagement.featureCase.casePrefixTip') }}
-    </div>
-  </a-modal>
 </template>
 
 <script setup lang="ts">
