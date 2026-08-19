@@ -150,6 +150,12 @@ const transform: AxiosTransform = {
   responseInterceptorsCatch: (error: any) => {
     const { t } = useI18n();
     const { response, code, message, config } = error || {};
+
+    // 请求被取消时静默处理，不抛出错误（路由切换或请求去重时的正常行为）
+    if (code === 'ERR_CANCELED' || error?.constructor?.name === 'CanceledError') {
+      return new Promise(() => {}); // 永不 resolve/reject，避免后续逻辑执行
+    }
+
     const errorMessageMode = config?.requestOptions?.errorMessageMode || 'none';
     const msg: string = response?.data?.message ?? '';
     const err: string = error?.toString?.() ?? '';
