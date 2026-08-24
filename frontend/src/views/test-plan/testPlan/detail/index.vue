@@ -74,6 +74,12 @@
             </span>
           </div>
           <div class="text-[var(--color-text-4)]">
+            <span class="mr-[8px]">{{ t('testPlan.testPlanDetail.executeRate') }}</span>
+            <span>
+              <span class="font-medium text-[var(--color-text-1)]"> {{ countDetail.executeRate }}% </span>
+            </span>
+          </div>
+          <div class="text-[var(--color-text-4)]">
             <span class="mr-[8px]">{{ t('caseManagement.caseReview.passRate') }}</span>
             <span>
               <span class="font-medium text-[var(--color-text-1)]"> {{ countDetail.passRate }}% </span>
