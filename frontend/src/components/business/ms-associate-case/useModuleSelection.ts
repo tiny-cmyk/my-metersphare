@@ -181,10 +181,22 @@ export default function useModuleSelections<T>(
     updateSelectModule(moduleId, record.id);
     updateSelectModule('all', record.id);
   }
-  // 全选当前页或者取消当前页
+  // 全选当前页、全选所有页或者取消
   function selectAllChange(v: SelectAllEnum) {
     const { data } = propsRes;
-    if (v === 'current') {
+    if (v === 'all') {
+      // 全选所有页：将所有模块标记为全选
+      Object.keys(allModuleTotal.value).forEach((moduleId) => {
+        setUnSelectNode(moduleId);
+        innerSelectedModulesMaps[moduleId].selectAll = true;
+        innerSelectedModulesMaps[moduleId].selectIds = new Set();
+        innerSelectedModulesMaps[moduleId].excludeIds = new Set();
+      });
+      // 回显当前页
+      data.forEach((item: any) => {
+        propsRes.selectedKeys.add(item.id);
+      });
+    } else if (v === 'current') {
       propsRes.selectedKeys = new Set([]);
       data.forEach((item: any) => {
         const { moduleId } = item;

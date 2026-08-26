@@ -269,7 +269,7 @@
       selectable: true,
       showSelectAll: true,
       heightUsed: 310,
-      showSelectorAll: false,
+      showSelectorAll: true,
     },
     (record) => {
       return {

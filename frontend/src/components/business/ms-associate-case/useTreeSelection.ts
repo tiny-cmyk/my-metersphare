@@ -33,17 +33,17 @@ export default function useTreeSelection(selectedModuleProps: SelectedModuleProp
     };
   }
 
-  // 选中当前节点 && 取消当前节点
-  function selectParent(nodeData: MsTreeNodeData, isSelected: boolean) {
-    setNode(nodeData, !isSelected);
-  }
-
   // 初始化左侧模块节点选中当前以及子节点
   function processAllCurrentNode(node: MsTreeNodeData, check: boolean) {
     if (node.children && node.children.length) {
       node.children.forEach((childrenNode: MsTreeNodeData) => processAllCurrentNode(childrenNode, check));
     }
     setNode(node, check);
+  }
+
+  // 选中当前节点及其所有子节点 && 取消当前节点及其所有子节点
+  function selectParent(nodeData: MsTreeNodeData, isSelected: boolean) {
+    processAllCurrentNode(nodeData, !isSelected);
   }
 
   // 选中当前节点以及子节点
