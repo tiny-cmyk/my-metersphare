@@ -23,13 +23,13 @@ export default function useTreeSelection(selectedModuleProps: SelectedModuleProp
   const isCheckedAll = ref<boolean>(false);
   // 是否半选
   const indeterminate = ref<boolean>(false);
-  // 设置节点
+  // 设置节点（优先使用完整的模块统计数量，避免搜索过滤后 count 不准确）
   function setNode(nodeData: MsTreeNodeData, checked: boolean) {
     selectedModulesMaps.value[nodeData.id] = {
       selectAll: checked,
       selectIds: new Set(),
       excludeIds: new Set(),
-      count: nodeData.count,
+      count: modulesCount.value[nodeData.id] ?? nodeData.count ?? 0,
     };
   }
 
