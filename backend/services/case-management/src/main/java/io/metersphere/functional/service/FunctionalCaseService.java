@@ -1033,21 +1033,26 @@ public class FunctionalCaseService {
     }
 
     /**
-     * 计算 moduleId 相对于 sourceModuleId 的路径（名称列表，从 source 的直接子节点到 moduleId）。
-     * 若 moduleId == sourceModuleId，返回空列表（放在 target 根）。
+     * 计算 moduleId 相对于 sourceModuleId 的父级的路径（包含 sourceModuleId 自身）。
+     * 这样复制时会在目标位置保留源目录结构（包括主目录）。
      */
     private List<String> getRelativePath(Map<String, FunctionalCaseModule> moduleMap, String moduleId, String sourceModuleId) {
-        // If sourceModuleId is specified and current module IS the source, place at target root
         if (StringUtils.isNotBlank(sourceModuleId) && StringUtils.equals(moduleId, sourceModuleId)) {
+            // 用例直接在主目录下，路径只包含主目录名称
+            FunctionalCaseModule sourceModule = moduleMap.get(sourceModuleId);
+            if (sourceModule != null) {
+                return Collections.singletonList(sourceModule.getName());
+            }
             return Collections.emptyList();
         }
         LinkedList<String> path = new LinkedList<>();
         String current = moduleId;
         while (StringUtils.isNotBlank(current) && !StringUtils.equals(current, "0")) {
             FunctionalCaseModule module = moduleMap.get(current);
-            if (module == null) break; // reached virtual root
-            if (StringUtils.isNotBlank(sourceModuleId) && StringUtils.equals(module.getId(), sourceModuleId)) break;
+            if (module == null) break;
             path.addFirst(module.getName());
+            // 到达 sourceModuleId 的父级时停止（包含 sourceModuleId 自身）
+            if (StringUtils.isNotBlank(sourceModuleId) && StringUtils.equals(module.getId(), sourceModuleId)) break;
             current = module.getParentId();
         }
         return path;
