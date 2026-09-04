@@ -362,19 +362,13 @@
           </div>
         </div>
         <div class="mt-[16px] h-[calc(100%-32px)] border-t border-[var(--color-text-n8)]">
-          <!-- 脑图开始（原组件保留，切换为 iframe 嵌入自定义脑图） -->
-          <!-- <MsFeatureCaseMinder
+          <MsFeatureCaseMinder
             v-if="props.moduleCountIsInit"
             :module-id="props.activeFolder"
             :modules-count="modulesCount"
             :module-name="props.moduleName"
             @save="handleMinderSave"
-          /> -->
-          <iframe :src="minderIframeSrc" width="100%" height="100%" frameborder="0" style="border: none" />
-          <MsDrawer v-model:visible="visible" :width="480" :mask="false">
-            {{ nodeData.text }}
-          </MsDrawer>
-          <!-- 脑图结束 -->
+          />
         </div>
       </div>
     </keep-alive>
