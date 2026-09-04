@@ -362,8 +362,16 @@
           </div>
         </div>
         <div class="mt-[16px] h-[calc(100%-32px)] border-t border-[var(--color-text-n8)]">
+          <iframe
+            v-if="hasCustomMinder"
+            :src="minderIframeSrc"
+            width="100%"
+            height="100%"
+            frameborder="0"
+            style="border: none"
+          />
           <MsFeatureCaseMinder
-            v-if="props.moduleCountIsInit"
+            v-else-if="props.moduleCountIsInit"
             :module-id="props.activeFolder"
             :modules-count="modulesCount"
             :module-name="props.moduleName"
@@ -1767,6 +1775,7 @@
     '1470186838932258816': 'CN-web',
     '1470187027910819840': 'CN-app',
   };
+  const hasCustomMinder = computed(() => !!MINDMAP_PROJECT_MAP[appStore.currentProjectId]);
   const minderIframeSrc = computed(() => {
     const projectKey = MINDMAP_PROJECT_MAP[appStore.currentProjectId] || '';
     const moduleId = props.activeFolder || '';
