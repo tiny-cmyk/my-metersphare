@@ -362,21 +362,7 @@
           </div>
         </div>
         <div class="mt-[16px] h-[calc(100%-32px)] border-t border-[var(--color-text-n8)]">
-          <iframe
-            v-if="hasCustomMinder"
-            :src="minderIframeSrc"
-            width="100%"
-            height="100%"
-            frameborder="0"
-            style="border: none"
-          />
-          <MsFeatureCaseMinder
-            v-else-if="props.moduleCountIsInit"
-            :module-id="props.activeFolder"
-            :modules-count="modulesCount"
-            :module-name="props.moduleName"
-            @save="handleMinderSave"
-          />
+          <iframe :src="minderIframeSrc" width="100%" height="100%" frameborder="0" style="border: none" />
         </div>
       </div>
     </keep-alive>
@@ -608,7 +594,6 @@
   import AutomationStatus from '@/components/business/ms-case-associate/automationStatus.vue';
   import caseLevel from '@/components/business/ms-case-associate/caseLevel.vue';
   import ExecuteStatusTag from '@/components/business/ms-case-associate/executeResult.vue';
-  import MsFeatureCaseMinder from '@/components/business/ms-minders/featureCaseMinder/index.vue';
   import BatchEditModal from './batchEditModal.vue';
   import CaseDetailDrawer from './caseDetailDrawer.vue';
   import FeatureCaseTree from './caseTree.vue';
@@ -1769,18 +1754,11 @@
   });
 
   // ===== 自定义脑图 iframe =====
-  const MINDMAP_PROJECT_MAP: Record<string, string> = {
-    '1465684991651422208': 'global-web',
-    '1465686383220826112': 'global-app',
-    '1470186838932258816': 'CN-web',
-    '1470187027910819840': 'CN-app',
-  };
-  const hasCustomMinder = computed(() => !!MINDMAP_PROJECT_MAP[appStore.currentProjectId]);
   const minderIframeSrc = computed(() => {
-    const projectKey = MINDMAP_PROJECT_MAP[appStore.currentProjectId] || '';
+    const projectId = appStore.currentProjectId || '';
     const moduleId = props.activeFolder || '';
     const modName = moduleNamePath.value || '';
-    return `http://10.2.5.250:8088?project=${encodeURIComponent(projectKey)}&moduleId=${encodeURIComponent(
+    return `http://10.2.5.250:8088?projectId=${encodeURIComponent(projectId)}&moduleId=${encodeURIComponent(
       moduleId
     )}&moduleName=${encodeURIComponent(modName)}&embedded=1`;
   });
