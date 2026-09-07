@@ -1542,7 +1542,7 @@ async function loadModuleCasesInline(moduleId) {
   try {
     showLoading('加载用例…');
     const cases = await apiFetch(
-      `/api/cases?project=${encodeURIComponent(currentProject)}&moduleId=${encodeURIComponent(moduleId)}`
+      `/api/cases?${currentProjectId ? 'projectId=' + encodeURIComponent(currentProjectId) : 'project=' + encodeURIComponent(currentProject)}&moduleId=${encodeURIComponent(moduleId)}`
     );
     hideLoading();
     expandedCasesCache[moduleId] = cases || [];
@@ -2677,7 +2677,10 @@ async function loadModules(project) {
   $placeholder.querySelector('div:last-child').textContent = '请在左侧选择一个模块';
 
   try {
-    const modules = await apiFetch(`/api/modules?project=${encodeURIComponent(project)}`);
+    const moduleParam = currentProjectId
+      ? `projectId=${encodeURIComponent(currentProjectId)}`
+      : `project=${encodeURIComponent(project)}`;
+    const modules = await apiFetch(`/api/modules?${moduleParam}`);
     hideLoading();
     cachedModuleTree = modules || [];
     if (!modules || modules.length === 0) {
@@ -2693,7 +2696,7 @@ async function loadModules(project) {
 
 /** 加载指定模块的用例并渲染脑图 */
 async function loadCases(moduleId, moduleName, silent = false) {
-  if (!currentProject) return;
+  if (!currentProject && !currentProjectId) return;
   currentModuleId = moduleId;
   if (moduleName) currentModuleName = moduleName;  // 记录当前模块名
 
@@ -2701,7 +2704,7 @@ async function loadCases(moduleId, moduleName, silent = false) {
 
   try {
     const cases = await apiFetch(
-      `/api/cases?project=${encodeURIComponent(currentProject)}&moduleId=${encodeURIComponent(moduleId)}`
+      `/api/cases?${currentProjectId ? 'projectId=' + encodeURIComponent(currentProjectId) : 'project=' + encodeURIComponent(currentProject)}&moduleId=${encodeURIComponent(moduleId)}`
     );
     if (!silent) hideLoading();
     hideError();
