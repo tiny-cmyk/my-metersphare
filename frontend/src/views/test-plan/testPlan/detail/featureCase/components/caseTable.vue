@@ -122,26 +122,9 @@
     </template>
     <!-- 脑图 -->
     <div v-else class="h-[calc(100%-48px)] border-t border-[var(--color-text-n8)]">
-      <iframe
-        v-if="hasCustomMinder"
-        :src="minderIframeSrc"
-        width="100%"
-        height="100%"
-        frameborder="0"
-        style="border: none"
-      />
-      <MsTestPlanFeatureCaseMinder
-        v-else
-        ref="msTestPlanFeatureCaseMinderRef"
-        :active-module="props.activeModule"
-        :module-tree="moduleTree"
-        :tree-type="props.treeType"
-        :plan-id="props.planId"
-        :can-edit="props.canEdit"
-        :table-sorter="tableSorter"
-        @operation="handleMinderOperation"
-        @refresh-plan="emit('refresh')"
-      />
+      <!-- 原脑图组件保留注释，替换为自定义脑图 iframe（只读模式） -->
+      <!-- <MsTestPlanFeatureCaseMinder ... /> -->
+      <iframe :src="minderIframeSrc" width="100%" height="100%" frameborder="0" style="border: none" />
     </div>
     <!-- 批量执行 -->
     <a-modal
@@ -318,7 +301,6 @@
     '1470186838932258816': 'CN-web',
     '1470187027910819840': 'CN-app',
   };
-  const hasCustomMinder = computed(() => !!MINDMAP_PROJECT_MAP[appStore.currentProjectId]);
   const minderIframeSrc = computed(() => {
     const projectId = appStore.currentProjectId || '';
     const projectKey = MINDMAP_PROJECT_MAP[projectId] || '';
