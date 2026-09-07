@@ -458,6 +458,7 @@ const PRI_COLORS = {
    状态
 ════════════════════════════════════════════════════════ */
 let currentProject = '';
+let currentProjectId = '';
 let currentModuleId = '';
 let currentModuleName = '';   // 当前模块名，用于脑图根节点
 let currentCases = [];
@@ -2835,6 +2836,7 @@ function getUrlParams() {
   const params = new URLSearchParams(window.location.search);
   return {
     project: params.get('project') || '',
+    projectId: params.get('projectId') || '',
     moduleId: params.get('moduleId') || '',
     moduleName: params.get('moduleName') || '',
     embedded: params.get('embedded') === '1',
@@ -2880,13 +2882,19 @@ function expandAndClickModule(moduleId) {
     isReadonly = true;
   }
 
-  await initProjects();
-
-  // URL 指定项目：自动选择
-  if (urlParams.project && $projectSelect.querySelector(`option[value="${urlParams.project}"]`)) {
-    $projectSelect.value = urlParams.project;
-    currentProject = urlParams.project;
-    await loadModules(currentProject);
+  // 如果有 projectId 参数，直接用它（支持任意项目）
+  if (urlParams.projectId) {
+    currentProjectId = urlParams.projectId;
+    if (urlParams.project) currentProject = urlParams.project;
+    await loadModules(urlParams.project || urlParams.projectId);
+  } else {
+    await initProjects();
+    // URL 指定项目：自动选择
+    if (urlParams.project && $projectSelect.querySelector(`option[value="${urlParams.project}"]`)) {
+      $projectSelect.value = urlParams.project;
+      currentProject = urlParams.project;
+      await loadModules(currentProject);
+    }
   }
 
   // URL 指定模块：嵌入模式直接加载用例，独立模式展开树节点
