@@ -1774,12 +1774,13 @@
     '1470187027910819840': 'CN-app',
   };
   const minderIframeSrc = computed(() => {
-    const projectKey = MINDMAP_PROJECT_MAP[appStore.currentProjectId] || '';
+    const projectId = appStore.currentProjectId || '';
+    const projectKey = MINDMAP_PROJECT_MAP[projectId] || '';
     const moduleId = props.activeFolder || '';
     const modName = moduleNamePath.value || '';
-    return `http://10.2.5.250:8088?project=${encodeURIComponent(projectKey)}&moduleId=${encodeURIComponent(
-      moduleId
-    )}&moduleName=${encodeURIComponent(modName)}&embedded=1`;
+    return `http://10.2.5.250:8088?projectId=${encodeURIComponent(projectId)}&project=${encodeURIComponent(
+      projectKey
+    )}&moduleId=${encodeURIComponent(moduleId)}&moduleName=${encodeURIComponent(modName)}&embedded=1`;
   });
   // 获取对应模块name
   function getModules(moduleIds: string) {

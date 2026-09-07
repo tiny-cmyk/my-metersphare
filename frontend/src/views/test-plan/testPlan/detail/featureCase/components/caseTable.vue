@@ -302,11 +302,12 @@
     '1470187027910819840': 'CN-app',
   };
   const minderIframeSrc = computed(() => {
-    const projectKey = MINDMAP_PROJECT_MAP[appStore.currentProjectId] || '';
+    const projectId = appStore.currentProjectId || '';
+    const projectKey = MINDMAP_PROJECT_MAP[projectId] || '';
     const moduleId = props.activeModule || '';
-    return `http://10.2.5.250:8088?project=${encodeURIComponent(projectKey)}&moduleId=${encodeURIComponent(
-      moduleId
-    )}&embedded=1&readonly=1`;
+    return `http://10.2.5.250:8088?projectId=${encodeURIComponent(projectId)}&project=${encodeURIComponent(
+      projectKey
+    )}&moduleId=${encodeURIComponent(moduleId)}&embedded=1&readonly=1`;
   });
 
   const hasOperationPermission = computed(
