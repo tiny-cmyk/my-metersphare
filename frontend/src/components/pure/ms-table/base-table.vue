@@ -174,11 +174,11 @@
               <template v-else-if="item.showTooltip">
                 <a-input
                   v-if="
-                    editActiveKey === `${record[rowKey || 'id']}` &&
+                    editActiveKey === `${record[rowKey || 'id']}_${item.dataIndex}` &&
                     item.editType &&
                     item.editType === ColumnEditTypeEnum.INPUT
                   "
-                  :ref="(el: any) => setRefMap(el, `${record[rowKey|| 'id']}`)"
+                  :ref="(el: any) => setRefMap(el, `${record[rowKey|| 'id']}_${item.dataIndex}`)"
                   v-model="record[item.dataIndex as string]"
                   :max-length="255"
                   @click.stop
@@ -693,11 +693,11 @@
         record[dataIndex] = currentEditValue.value;
       }
       isEnter.value = false;
-      refMap.value[record[rowKey || 'id']] = null;
+      refMap.value[`${record[rowKey || 'id']}_${dataIndex}`] = null;
       editActiveKey.value = '';
       currentEditValue.value = '';
     } else {
-      if (!record[dataIndex]) {
+      if (dataIndex === 'name' && !record[dataIndex]) {
         Message.warning(t('common.value.notNull'));
         return;
       }
@@ -799,9 +799,9 @@
 
   // 编辑单元格的input
   const handleEdit = (dataIndex: string, rowIndex: number, record: TableData) => {
-    editActiveKey.value = record.id;
+    editActiveKey.value = `${record.id}_${dataIndex}`;
     currentEditValue.value = record[dataIndex];
-    const refKey = `${record[rowKey as string]}`;
+    const refKey = `${record[rowKey as string]}_${dataIndex}`;
     if (refMap.value[refKey]) {
       refMap.value[refKey]?.focus();
     } else {
