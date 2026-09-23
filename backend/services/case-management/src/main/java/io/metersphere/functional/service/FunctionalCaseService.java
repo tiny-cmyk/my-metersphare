@@ -1351,8 +1351,8 @@ public class FunctionalCaseService {
         functionalCase.setRefId(caseId);
         functionalCase.setLastExecuteResult(ExecStatus.PENDING.name());
         functionalCase.setLatest(true);
-        // 生成自定义编号
-        functionalCase.setCustomNum(generateCustomNum(resolvedModuleId));
+        // 用例编号（导入时不设置）
+        functionalCase.setCustomNum(null);
         functionalCase.setCreateUser(userId);
         functionalCase.setUpdateUser(userId);
         functionalCase.setCreateTime(System.currentTimeMillis());
