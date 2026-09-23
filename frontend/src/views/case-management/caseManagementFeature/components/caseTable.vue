@@ -813,6 +813,15 @@
       'filter-icon-align-left': true,
     },
     {
+      title: 'caseManagement.featureCase.customNum',
+      dataIndex: 'customNum',
+      showInTable: true,
+      showTooltip: true,
+      width: 150,
+      showDrag: true,
+      editType: hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE']) ? ColumnEditTypeEnum.INPUT : undefined,
+    },
+    {
       title: 'caseManagement.featureCase.tableColumnName',
       slotName: 'name',
       dataIndex: 'name',
@@ -1192,11 +1201,12 @@
     }
   }
 
-  function getUpdateParams(detailResult: CaseManagementTable, name: string) {
+  function getUpdateParams(detailResult: CaseManagementTable, record: CaseManagementTable) {
     return {
       request: {
         ...detailResult,
-        name,
+        name: record.name,
+        customNum: record.customNum,
         customFields: getCustomMaps(detailResult),
       },
       fileList: [],
@@ -1204,12 +1214,12 @@
   }
 
   /**
-   * 更新用例名称
+   * 更新用例（行内编辑：名称、用例编号等）
    */
-  async function updateCaseName(record: CaseManagementTable) {
+  async function updateCaseInline(record: CaseManagementTable) {
     try {
       const detailResult = await getCaseDetail(record.id);
-      const params = await getUpdateParams(detailResult, record.name);
+      const params = await getUpdateParams(detailResult, record);
       await updateCaseRequest(params);
       Message.success(t('common.updateSuccess'));
       return Promise.resolve(true);
@@ -1259,7 +1269,7 @@
         automationStatus: getAutomationStatus(record.customFields),
       };
     },
-    updateCaseName
+    updateCaseInline
   );
 
   // ===== 标签行内编辑 =====
