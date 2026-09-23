@@ -202,12 +202,12 @@
                   <MsIcon
                     v-if="
                       item.editType &&
-                      editActiveKey !== `${item.dataIndex}${rowIndex}` &&
+                      editActiveKey !== `${record[rowKey || 'id']}_${item.dataIndex}` &&
                       !record.deleted &&
                       record.scopeId !== 'global'
                     "
                     class="ml-2 cursor-pointer"
-                    :class="{ 'ms-table-edit-active': editActiveKey === rowIndex }"
+                    :class="{ 'ms-table-edit-active': editActiveKey === `${record[rowKey || 'id']}_${item.dataIndex}` }"
                     type="icon-icon_edit_outlined"
                     @click.stop="handleEdit(item.dataIndex as string, rowIndex, record)"
                   />
