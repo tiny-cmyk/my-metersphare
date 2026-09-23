@@ -315,6 +315,8 @@
   );
   const isActivated = inject<Ref<boolean>>('isActivated', ref(false));
 
+  const SIGMA_PROJECT_ID = '1574323921661927424';
+
   const columns = computed<MsTableColumn>(() => [
     {
       title: 'ID',
@@ -329,6 +331,18 @@
       showTooltip: true,
       columnSelectorDisabled: true,
     },
+    ...(appStore.currentProjectId === SIGMA_PROJECT_ID
+      ? [
+          {
+            title: 'caseManagement.featureCase.customNum',
+            dataIndex: 'customNum',
+            showInTable: true,
+            showTooltip: true,
+            width: 150,
+            showDrag: true,
+          },
+        ]
+      : []),
     {
       title: 'case.caseName',
       dataIndex: 'name',
