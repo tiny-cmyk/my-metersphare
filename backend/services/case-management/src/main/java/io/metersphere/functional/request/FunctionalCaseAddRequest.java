@@ -31,6 +31,9 @@ public class FunctionalCaseAddRequest implements Serializable {
     @NotBlank(message = "{functional_case.name.not_blank}")
     private String name;
 
+    @Schema(description = "用例编号")
+    private String customNum;
+
     @Schema(description = "前置条件", defaultValue = "")
     private String prerequisite;
 

@@ -170,6 +170,7 @@ export interface CreateOrUpdateCase {
   projectId: string;
   templateId: string;
   name: string;
+  customNum?: string; // 用例编号
   prerequisite: string; // prerequisite
   caseEditType: CaseEditType; // 编辑模式：步骤模式/文本模式
   steps: string;
@@ -202,6 +203,7 @@ export interface AttachFileInfo {
 export interface DetailCase {
   id: string;
   num?: number;
+  customNum?: string; // 用例编号
   moduleId: string;
   moduleName?: string;
   projectId: string;

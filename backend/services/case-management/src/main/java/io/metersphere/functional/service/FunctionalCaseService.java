@@ -85,9 +85,6 @@ public class FunctionalCaseService {
     private FunctionalCaseMapper functionalCaseMapper;
 
     @Resource
-    private FunctionalCaseModuleMapper functionalCaseModuleMapper;
-
-    @Resource
     private FunctionalCaseBlobMapper functionalCaseBlobMapper;
 
     @Resource
@@ -311,8 +308,8 @@ public class FunctionalCaseService {
         functionalCase.setVersionId(StringUtils.defaultIfBlank(request.getVersionId(), extBaseProjectVersionMapper.getDefaultVersion(request.getProjectId())));
         functionalCase.setTags(request.getTags());
         functionalCase.setAiCreate(request.getAiCreate());
-        // 生成自定义编号
-        functionalCase.setCustomNum(generateCustomNum(request.getModuleId()));
+        // 用例编号（用户自定义输入）
+        functionalCase.setCustomNum(StringUtils.isBlank(request.getCustomNum()) ? null : request.getCustomNum().trim());
         functionalCaseMapper.insertSelective(functionalCase);
         //附属表
         FunctionalCaseBlob functionalCaseBlob = new FunctionalCaseBlob();
@@ -342,29 +339,6 @@ public class FunctionalCaseService {
     public long getNextNum(String projectId) {
         return NumGenerator.nextNum(projectId, ApplicationNumScope.CASE_MANAGEMENT);
     }
-
-    /**
-     * 根据模块前缀生成自定义编号
-     * 如果模块设置了 casePrefix，则生成 {prefix}_{sequence}，如 SIGMA_FUN_REC_BOX_001
-     * 如果没有设置前缀，则返回 null
-     */
-    public String generateCustomNum(String moduleId) {
-        if (StringUtils.isBlank(moduleId)) {
-            return null;
-        }
-        FunctionalCaseModule module = functionalCaseModuleMapper.selectByPrimaryKey(moduleId);
-        if (module == null || StringUtils.isBlank(module.getCasePrefix())) {
-            return null;
-        }
-        String prefix = module.getCasePrefix();
-        // 查询该模块下 custom_num 的最大序号
-        long maxSeq = extFunctionalCaseMapper.getMaxCustomNumSeq(moduleId, prefix);
-        long nextSeq = maxSeq + 1;
-        // 至少 3 位，自动扩展
-        int width = Math.max(3, String.valueOf(nextSeq).length());
-        return prefix + "_" + String.format("%0" + width + "d", nextSeq);
-    }
-
 
     /**
      * 查看用例获取详情

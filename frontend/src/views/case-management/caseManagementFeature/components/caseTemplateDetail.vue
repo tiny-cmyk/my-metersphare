@@ -16,6 +16,13 @@
             allow-clear
           ></a-input>
         </a-form-item>
+        <a-form-item field="customNum" :label="t('caseManagement.featureCase.customNum')" asterisk-position="end">
+          <a-input
+            v-model="form.customNum"
+            :placeholder="t('caseManagement.featureCase.customNumPlaceholder')"
+            allow-clear
+          ></a-input>
+        </a-form-item>
         <a-form-item field="precondition" :label="t('system.orgTemplate.precondition')" asterisk-position="end">
           <MsRichText
             v-model:raw="form.prerequisite"
@@ -347,6 +354,7 @@
     projectId: currentProjectId.value,
     templateId: '',
     name: '',
+    customNum: '',
     prerequisite: '',
     caseEditType: 'STEP',
     steps: '',

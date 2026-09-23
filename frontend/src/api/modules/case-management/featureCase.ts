@@ -90,7 +90,6 @@ import {
   SaveCaseMinderUrl,
   StopCaseExportUrl,
   TransferFileUrl,
-  UpdateCaseModulePrefixUrl,
   UpdateCaseModuleTreeUrl,
   UpdateCaseUrl,
   UpdateCommentItemUrl,
@@ -137,11 +136,6 @@ export function createCaseModuleTree(data: CreateOrUpdateModule) {
 // 更新模块树
 export function updateCaseModuleTree(data: UpdateModule) {
   return MSR.post({ url: UpdateCaseModuleTreeUrl, data });
-}
-
-// 更新模块前缀
-export function updateCaseModulePrefix(data: { id: string; name: string; casePrefix: string }) {
-  return MSR.post({ url: UpdateCaseModulePrefixUrl, data });
 }
 
 // 移动模块树
