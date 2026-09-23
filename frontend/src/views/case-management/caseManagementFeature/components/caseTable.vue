@@ -797,31 +797,37 @@
     });
   });
 
-  const firstStaticColumn: MsTableColumn = [
-    {
-      'title': 'ID',
-      'dataIndex': 'num',
-      'slotName': 'num',
-      'sortIndex': 1,
-      'sortable': {
-        sortDirections: ['ascend', 'descend'],
-        sorter: true,
+  const SIGMA_PROJECT_ID = '1574323921661927424';
+
+  const firstStaticColumn = computed<MsTableColumn>(() => {
+    const cols: MsTableColumn = [
+      {
+        'title': 'ID',
+        'dataIndex': 'num',
+        'slotName': 'num',
+        'sortIndex': 1,
+        'sortable': {
+          sortDirections: ['ascend', 'descend'],
+          sorter: true,
+        },
+        'width': 150,
+        'showTooltip': false,
+        'columnSelectorDisabled': true,
+        'filter-icon-align-left': true,
       },
-      'width': 150,
-      'showTooltip': false,
-      'columnSelectorDisabled': true,
-      'filter-icon-align-left': true,
-    },
-    {
-      title: 'caseManagement.featureCase.customNum',
-      dataIndex: 'customNum',
-      showInTable: true,
-      showTooltip: true,
-      width: 150,
-      showDrag: true,
-      editType: hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE']) ? ColumnEditTypeEnum.INPUT : undefined,
-    },
-    {
+    ];
+    if (currentProjectId.value === SIGMA_PROJECT_ID) {
+      cols.push({
+        title: 'caseManagement.featureCase.customNum',
+        dataIndex: 'customNum',
+        showInTable: true,
+        showTooltip: true,
+        width: 150,
+        showDrag: true,
+        editType: hasAnyPermission(['FUNCTIONAL_CASE:READ+UPDATE']) ? ColumnEditTypeEnum.INPUT : undefined,
+      });
+    }
+    cols.push({
       title: 'caseManagement.featureCase.tableColumnName',
       slotName: 'name',
       dataIndex: 'name',
@@ -835,8 +841,9 @@
       },
       showDrag: false,
       columnSelectorDisabled: true,
-    },
-  ];
+    });
+    return cols;
+  });
 
   const caseLevelColumn: MsTableColumn = [
     {
@@ -2031,7 +2038,7 @@
     // 筛选选项已在列定义中写死，不再用 API 返回值覆盖（API 可能不返回 internalFieldKey）
 
     fullColumns = [
-      ...firstStaticColumn,
+      ...firstStaticColumn.value,
       ...caseLevelColumn,
       ...automationStatusColumn,
       ...lastStaticColumn,

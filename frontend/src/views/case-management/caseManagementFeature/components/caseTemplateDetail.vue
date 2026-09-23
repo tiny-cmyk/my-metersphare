@@ -16,7 +16,12 @@
             allow-clear
           ></a-input>
         </a-form-item>
-        <a-form-item field="customNum" :label="t('caseManagement.featureCase.customNum')" asterisk-position="end">
+        <a-form-item
+          v-if="currentProjectId === '1574323921661927424'"
+          field="customNum"
+          :label="t('caseManagement.featureCase.customNum')"
+          asterisk-position="end"
+        >
           <a-input
             v-model="form.customNum"
             :placeholder="t('caseManagement.featureCase.customNumPlaceholder')"
