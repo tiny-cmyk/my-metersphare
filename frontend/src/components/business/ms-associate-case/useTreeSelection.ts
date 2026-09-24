@@ -38,7 +38,18 @@ export default function useTreeSelection(selectedModuleProps: SelectedModuleProp
     if (node.children && node.children.length) {
       node.children.forEach((childrenNode: MsTreeNodeData) => processAllCurrentNode(childrenNode, check));
     }
-    setNode(node, check);
+    // 对有子节点的父模块，使用 node.count（已减去子模块数量）避免 totalCount 重复计算
+    // 叶子节点仍使用 modulesCount（完整数量）
+    if (node.children && node.children.length) {
+      selectedModulesMaps.value[node.id] = {
+        selectAll: check,
+        selectIds: new Set(),
+        excludeIds: new Set(),
+        count: node.count ?? 0,
+      };
+    } else {
+      setNode(node, check);
+    }
   }
 
   // 选中当前节点及其所有子节点 && 取消当前节点及其所有子节点
