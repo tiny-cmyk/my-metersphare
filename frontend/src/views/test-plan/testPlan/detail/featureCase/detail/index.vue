@@ -414,11 +414,20 @@
       caseDetailLoading.value = true;
       const res = await getCaseDetail(activeId.value);
       caseDetail.value = res;
+      const SIGMA_PROJECT_ID = '1574323921661927424';
       descriptions.value = [
         {
           label: t('common.belongModule'),
           value: res.moduleName || t('common.root'),
         },
+        ...(appStore.currentProjectId === SIGMA_PROJECT_ID && res.customNum
+          ? [
+              {
+                label: t('caseManagement.featureCase.customNum'),
+                value: res.customNum,
+              },
+            ]
+          : []),
         {
           label: t('common.tag'),
           value: res.tags,
